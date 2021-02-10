@@ -6,6 +6,12 @@ from env.BaseMaze import TextMaze
 
 import numpy as np
 
+""" To do:
+2. Randomly spawn the agent 
+3. Customize action space
+4. Customize reward function
+"""
+
 
 class RandomMaze(object):
     def __init__(self, maze_configs):
@@ -84,7 +90,7 @@ maze_configurations = {
     'num_rows': 5,  # number of the row rooms
     'num_cols': 5,  # number of the col rooms
     'room_size': 2,  # room size
-    'wall_size': 0.5,  # size of the wall
+    'wall_size': 0.01,  # size of the wall
     'obs_name': 'depth',
     'view_mode': 'top'
 }
