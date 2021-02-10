@@ -1,16 +1,8 @@
-import matplotlib.pyplot as plt
-from enum import IntEnum
-import gym_miniworld
 from gym import spaces
 from env.BaseMaze import TextMaze
-
 import numpy as np
-
-""" To do:
-2. Randomly spawn the agent 
-3. Customize action space
-4. Customize reward function
-"""
+import IPython.terminal.debugger as Debug
+import matplotlib.pyplot as plt
 
 
 class RandomMaze(object):
@@ -22,7 +14,7 @@ class RandomMaze(object):
                               wall_size=maze_configs['wall_size'])
 
         # action space
-        self.actions = ['forward', 'turn_left', 'turn_right', 'stop']
+        self.actions = ['turn_left', 'turn_right', 'forward', 'backward']
         self.action_space = spaces.Discrete(len(self.actions))
 
         # observation space
@@ -43,7 +35,7 @@ class RandomMaze(object):
 
         # re-construct the observations
         if self.observation_name == "depth":  # return depth observation; Shape: H x W
-            obs = self._maze.render_depth().squeeze(axis=2)
+            obs = self._maze.render_depth()
         elif self.observation_name == 'rgb-d':  # return RGB + depth observation; Shape: H x W x 4
             rgb_obs = obs
             d_obs = self._maze.render_depth()
@@ -63,7 +55,7 @@ class RandomMaze(object):
 
         # re-construct the observations
         if self.observation_name == "depth":  # return depth observation; Shape: H x W
-            obs = self._maze.render_depth().squeeze(axis=2)
+            obs = self._maze.render_depth()
         elif self.observation_name == 'rgb-d':  # return RGB + depth observation; Shape: H x W x 4
             rgb_obs = obs
             d_obs = self._maze.render_depth()
@@ -72,6 +64,10 @@ class RandomMaze(object):
             obs = obs
         else:
             raise Exception("Invalid observation name.")
+
+        plt.imshow(obs)
+        plt.show()
+        plt.pause(0.1)
 
         return obs
 
@@ -83,23 +79,3 @@ class RandomMaze(object):
 
     def compute_reward(self):
         pass
-
-
-# test code
-maze_configurations = {
-    'num_rows': 5,  # number of the row rooms
-    'num_cols': 5,  # number of the col rooms
-    'room_size': 2,  # room size
-    'wall_size': 0.01,  # size of the wall
-    'obs_name': 'depth',
-    'view_mode': 'top'
-}
-
-myMaze = RandomMaze(maze_configurations)
-episode_len = 100
-myMaze.reset()
-for i in range(episode_len):
-    act = myMaze.action_space.sample()
-    myMaze.step(act)
-    plt.pause(0.2)
-    myMaze.render()

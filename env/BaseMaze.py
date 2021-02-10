@@ -1,9 +1,12 @@
 import numpy as np
 import math
+import random
 from gym import spaces
 from gym_miniworld.miniworld import MiniWorldEnv, Room
-from gym_miniworld.entity import Box, ImageFrame
+from gym_miniworld.entity import Box, ImageFrame, Entity
 from gym_miniworld.params import DEFAULT_PARAMS
+
+import IPython.terminal.debugger as Debug
 
 
 class TextMaze(MiniWorldEnv):
@@ -43,10 +46,62 @@ class TextMaze(MiniWorldEnv):
         # Allow only the movement actions
         self.action_space = spaces.Discrete(self.actions.move_forward+1)
 
+    def step(self, action, forward_step_size=0.5, turn_step_size=90):
+        """
+        Step function with customized forward/backward step size; turning step size
+        :param action: action index (discrete version)
+        :param forward_step_size: minimal forward step size (float smaller than 1 for bug free)
+        :param turn_step_size: minimal turn step size (degree integer)
+        :return: standard return like gym
+        """
+        info = {}
+
+        self.step_count += 1
+
+        fwd_step = forward_step_size
+        fwd_drift = 0.0
+        turn_step = turn_step_size
+
+        if action == self.actions.move_forward:
+            self.move_agent(fwd_step, fwd_drift)
+
+        elif action == self.actions.move_back:
+            self.move_agent(-fwd_step, fwd_drift)
+
+        elif action == self.actions.turn_left:
+            self.turn_agent(turn_step)
+
+        elif action == self.actions.turn_right:
+            self.turn_agent(-turn_step)
+
+        # Generate the current camera image
+        obs = self.render_obs()
+
+        # If the maximum time step count is reached
+        if self.step_count >= self.max_episode_steps:
+            done = True
+            reward = 0
+            return obs, reward, done, {}
+
+        reward = 0
+        done = False
+
+        return obs, reward, done, info
+
+    """ Auxiliary functions
+    """
+    def _place_agent(self, room=None, pos=None, ori=0):
+        return self.place_entity(
+                    self.agent,
+                    room=room,
+                    pos=pos,
+                    dir=ori
+                )
+
     @staticmethod
     def _load_txt():
         # read the map from text file
-        with open('./maze_test.txt', 'r') as f_in:
+        with open('./env/maze_test.txt', 'r') as f_in:
             file_data = f_in.readlines()
         f_in.close()
         map_data = [l.rstrip() for l in file_data]
@@ -110,10 +165,7 @@ class TextMaze(MiniWorldEnv):
         visited = set()
 
         # connect the neighbors based on the map info
-        print("Valid locs: ", locs)
-        print("valid pos:", self.valid_locations)
         for room_loc in self.valid_locations:
-            print("Current room: ", room_loc)
             # locate the current room
             room = rows[room_loc[0]][room_loc[1]]
 
@@ -127,7 +179,6 @@ class TextMaze(MiniWorldEnv):
             for di, dj in neighbors:
                 ni = room_loc[1] + di
                 nj = room_loc[0] + dj
-                print("Current neighbor: ", nj, ni)
 
                 # check validation
                 if nj < 0 or nj >= self.num_rows:
@@ -147,44 +198,11 @@ class TextMaze(MiniWorldEnv):
                 elif dj == 0:
                     self.connect_rooms(room, neighbor, min_z=room.min_z, max_z=room.max_z)
 
+        # place the target
         self.box = self.place_entity(Box(color='red'))
 
-        self.place_agent()
-
-    def step(self, action):
-        obs, reward, done, info = super().step(action)
-
-        if self.near(self.box):
-            reward += self._reward()
-            done = True
-
-        return obs, reward, done, info
-
-
-class TextMazeS2(TextMaze):
-    def __init__(self):
-        super().__init__(num_rows=2, num_cols=2)
-
-
-class TextMazeS3(TextMaze):
-    def __init__(self):
-        super().__init__(num_rows=3, num_cols=3)
-
-
-class TextMazeS3Fast(TextMaze):
-    def __init__(self, forward_step=0.7, turn_step=45):
-
-        # Parameters for larger movement steps, fast stepping
-        params = DEFAULT_PARAMS.no_random()
-        params.set('forward_step', forward_step)
-        params.set('turn_step', turn_step)
-
-        max_steps = 300
-
-        super().__init__(
-            num_rows=3,
-            num_cols=3,
-            params=params,
-            max_episode_steps=max_steps,
-            domain_rand=False
-        )
+        # place the agent randomly
+        agent_room_loc = random.sample(self.valid_locations, 1)[0]
+        print(f"Agent is spawned at room {agent_room_loc}")
+        agent_room = rows[agent_room_loc[0]][agent_room_loc[1]]
+        self._place_agent(room=agent_room)
