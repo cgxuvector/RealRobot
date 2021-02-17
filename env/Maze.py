@@ -15,7 +15,10 @@ import random
 import copy as cp
 from gym import spaces
 from gym_miniworld.miniworld import MiniWorldEnv
-from gym_miniworld.entity import Box, Agent
+from gym_miniworld.entity import *
+from gym_miniworld.opengl import *
+
+import matplotlib.pyplot as plt
 
 import IPython.terminal.debugger as Debug
 
@@ -78,6 +81,7 @@ class TextMaze(MiniWorldEnv):
         # customizable observations
         self.observation_name = obs_name  # name of the observations
         self.render_view = render_view  # render mode
+        self.panorama_orientations = [90, 180, 270, 0]
 
         # customize start and goal locations
         self.rnd_init = rnd_init  # whether randomize the start location
@@ -360,13 +364,13 @@ class TextMaze(MiniWorldEnv):
             goal_room_loc = self.valid_locations[-1]
 
         # Debug position
-        agent_room_los = (0, 0)
-        goal_room_loc = (0, 4)
+        agent_room_loc = (0, 3)
+        goal_room_loc = (4, 4)
 
         # place the agent randomly
         print(f"Agent is spawned in room {agent_room_loc}")
         agent_room = rows[agent_room_loc[0]][agent_room_loc[1]]
-        self._place_agent(room=agent_room)
+        self._place_agent(room=agent_room, pos=np.array([agent_room.mid_x, 0, agent_room.mid_z]))
         self.start_info['pos'] = self.agent.pos
         self.start_info['ori'] = self.agent.dir
 
@@ -393,7 +397,71 @@ class TextMaze(MiniWorldEnv):
             obs = np.concatenate((rgb_obs, d_obs), axis=2)
         elif self.observation_name == 'rgb':  # return RGB observation; Shape: H x W x 3
             obs = obs
+        elif self.observation_name == "panorama-rgb" or self.observation_name == "panorama-depth":
+            # render panoramic observation
+            obs = []
+            current_dir = cp.copy(self.agent.dir)
+            for i in range(4):
+                select_dir = current_dir + 90 * i * np.pi / 180
+                tmp_obs = self._render_dir_obs(radian_dir=select_dir)
+                obs.append(tmp_obs)
+            # reset the direction
+            self.agent.dir = current_dir
         else:
             raise Exception("Invalid observation name.")
 
         return obs
+
+    # render panorama view
+    def _render_dir_obs(self, radian_dir=0, frame_buffer=None):
+        """
+            Render an observation from a specific direction
+        """
+        if frame_buffer == None:
+            frame_buffer = self.obs_fb
+
+        # Switch to the default OpenGL context
+        # This is necessary on Linux Nvidia drivers
+        self.shadow_window.switch_to()
+
+        # Bind the frame buffer before rendering into it
+        frame_buffer.bind()
+
+        # Clear the color and depth buffers
+        glClearColor(*self.sky_color, 1.0)
+        glClearDepth(1.0)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        # Set the projection matrix
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(
+            self.agent.cam_fov_y,
+            frame_buffer.width / float(frame_buffer.height),
+            0.04,
+            100.0
+        )
+
+        # set the render direction
+        self.agent.dir = radian_dir
+
+        # Setup the camera
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+        gluLookAt(
+            # Eye position
+            *self.agent.cam_pos,
+            # Target
+            *(self.agent.cam_pos + self.agent.cam_dir),
+            # Up vector
+            0, 1.0, 0.0
+        )
+
+        if self.observation_name == "panorama-rgb":
+            return self._render_world(
+                frame_buffer,
+                render_agent=False
+            )
+        else:
+            self.render_obs(frame_buffer)
+            return frame_buffer.get_depth_map(0.04, 100.0)
