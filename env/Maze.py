@@ -10,7 +10,6 @@
              cell and ' ' represents the empty corridor cell. To remove the influence from the wall thickness,
              we choose to set the wall parameter to be 0.01.
 """
-import numpy as np
 import random
 import copy as cp
 from gym import spaces
@@ -19,14 +18,6 @@ from gym_miniworld.entity import *
 from gym_miniworld.opengl import *
 
 import matplotlib.pyplot as plt
-
-import IPython.terminal.debugger as Debug
-
-
-""" To do
-        - compute reward
-        - panorama view
-"""
 
 
 class TextMaze(MiniWorldEnv):
@@ -41,55 +32,75 @@ class TextMaze(MiniWorldEnv):
             - Customizable observations
                 - Front view: RGB images
                 - Front view: Depth images
+                - Panorama view: RGB images (4 directions: front/back, left/right)
     """
     def __init__(
         self,
-        num_rows=8,
-        num_cols=8,
+        text_file=None,
         room_size=3,
         wall_size=0.25,
         max_episode_steps=100,
         forward_step_size=0.2,  # range in (0, 1) float
         turn_step_size=90,  # range in (0, 90) int
         obs_name="rgb",
-        render_view="agent",
         rnd_init=False,
         rnd_goal=False,
         **kwargs
     ):
+        """
+        Initial function. Here are several notes:
+            1. The origin is on the top left same as the image coordinate system.
+            2. Each room can be inferred by (row_idx, col_idx)
+            3. default means inheriting from miniworld.py, added means new adding.
+        :param room_size (default): 3
+        :param wall_size (default): thickness of the wall. For Point2DMaze-like mazes, wall_size = 0.25 as default;
+                                    For DeepMind-like mazes, wall_size = 0.01 as default.
+        :param max_episode_steps (default): Maximal number of steps per episode
+        :param forward_step_size (added): step size for forward/backward actions, range in (0, 1)
+        :param turn_step_size (added): turn angle for turn left/turn right actions, degree number (0, 360)
+        :param obs_name (added): observation name. Supporting rgb, depth, rgb-d, panorama-rgb, panorama-depth
+        :param rnd_init (added): flag for setting the initial agent location randomly
+        :param rnd_goal (added): flag for setting the goal location randomly
+        :param kwargs: Other parameters (default)
+        """
+        # load the text files
+        assert text_file is not None, "No text file is provided."
+        # load the map and valid locations (i.e., empty corridor cells)
+        self.array_map, self.valid_locations = self._load_txt(text_file)
+        # note, in miniworld, there is no out-layer walls
+        assert self.array_map.shape[0] > 2 and self.array_map.shape[1] > 2, \
+            print(f"The maze size should be bigger than 2 x 2")
+
         # customize the maze
-        self.num_rows = num_rows  # number of rooms on rows (x axis) Note: origin is on the top left.
-        self.num_cols = num_cols  # number of rooms on cols (y axis)
+        self.num_rows = self.array_map.shape[0] - 2  # number of rooms on rows (x axis) Note: origin is on the top left.
+        self.num_cols = self.array_map.shape[1] - 2  # number of rooms on cols (y axis)
         self.room_size = room_size  # size of the room
         self.gap_size = wall_size  # room gap size (i.e. wall thickness)
-        # if text map is provided, reset the rows and cols
-        try:
-            self.array_map, self.valid_locations = self._load_txt()
-            assert self.array_map.shape[0] > 2 and self.array_map.shape[1] > 2, \
-                print(f"The maze size should be bigger than 2 x 2")
-            self.num_rows = self.array_map.shape[0] - 2
-            self.num_cols = self.array_map.shape[1] - 2
-        except FileNotFoundError:
-            print("Text map file is not accessible.")
 
-        # customize the action
+        # customize the action space
         self.ACTION_NAME = ['turn_left', 'turn_right', 'forward', 'backward']  # name of the discrete actions
         self.action_space = spaces.Discrete(len(self.ACTION_NAME))  # create the action space
         self.forward_step_size = forward_step_size  # minimal forward/backward step size
         self.turn_step_size = turn_step_size  # minimal turn left/right step size
 
-        # customizable observations
+        # customizable observation space
         self.observation_name = obs_name  # name of the observations
-        self.render_view = render_view  # render mode
-        self.panorama_orientations = [90, 180, 270, 0]
+
+        # customizable render.
+        # Note: we use matplotlib to show the rendered observations
+        self.render_init_marker = True  # mark the initial render
+        self.render_fig = None
+        self.render_arrays = None
+        self.render_artists = None
 
         # customize start and goal locations
         self.rnd_init = rnd_init  # whether randomize the start location
         self.rnd_goal = rnd_goal  # whether randomize the goal location
         self.start_info = {}  # start information
         self.goal_info = {}  # goal information
+        self.reach_goal_eps = 1e-3  # epsilon as the goal reaching threshold
 
-        # Debug parameters
+        # Parameters for bug-free inherit
         self.step_count = 0
         self.agent = Agent()
         self.entities = []
@@ -101,13 +112,13 @@ class TextMaze(MiniWorldEnv):
 
         # construct the domain
         super().__init__(
-            max_episode_steps=max_episode_steps or num_rows * num_cols * 24,
+            max_episode_steps=max_episode_steps or self.num_rows * self.num_cols * 24,
             **kwargs
         )
 
     def reset(self):
         """
-            Because I have to add the customizable observations, I override the based method
+            Reset function. Because I customize the observation, there for I override the whole function.
         """
         # Step count since episode start
         self.step_count = 0
@@ -124,7 +135,7 @@ class TextMaze(MiniWorldEnv):
         # Wall segments for collision detection
         self.wall_segs = []
 
-        # Generate the world (overridden)
+        # Generate the world (overridden blew in auxiliary functions)
         self._gen_world()
 
         # Check if domain randomization is enabled or not
@@ -158,12 +169,15 @@ class TextMaze(MiniWorldEnv):
         # Pre-compile static parts of the environment into a display list
         self._render_static()
 
-        # render the observation
+        # render the observation (function is written below in auxiliary functions)
         obs = self._render_customize_obs()
 
         return obs
 
     def step(self, action):
+        """
+            Step function
+        """
         # save information
         info = {}
 
@@ -188,10 +202,10 @@ class TextMaze(MiniWorldEnv):
         elif action == self.actions.turn_right:
             self.turn_agent(-turn_step)
 
-        # Generate the current camera image
+        # Generate the current camera image (rendering using customized observation function)
         obs = self._render_customize_obs()
 
-        # compute the reward
+        # compute the reward (here we only provide sparse reward 1 for goal and 0 otherwise)
         reward = self.compute_reward()
 
         # If the maximum time step count is reached or the reward is received
@@ -203,32 +217,83 @@ class TextMaze(MiniWorldEnv):
         return obs, reward, done, info
 
     def compute_reward(self):
+        """
+            Reward function:
+            Here we provide one sparse reward function. 1 for reaching the goal and 0 otherwise.
+            The reward is 1 when || agent_pos - goal_pos ||_2 < epsilon. We do not consider
+            direction currently.
+        """
         # check whether the agent reaches the goal
         dist, _ = self._reach_goal()
         self.goal_info['dist'] = dist
 
         # return the reward based on the reaching result
-        if dist < 0.5:
+        if dist < self.reach_goal_eps:
             return 1
         else:
             return 0
 
+    def render(self, mode='human', close=False, view='agent'):
+        # render the current observation
+        obs = self._render_customize_obs()
+
+        # show the rendered observation
+        if self.observation_name != "panorama-rgb" and self.observation_name != "panorama-depth":
+            if self.render_init_marker:
+                self.render_fig, self.render_arrays = plt.subplots(1)
+                self.render_arrays.set_title(self.observation_name)
+                self.render_arrays.axis("off")
+                self.render_artists = self.render_arrays.imshow(obs)
+                self.render_init_marker = False
+            else:
+                self.render_artists.set_data(obs)
+        else:
+            if self.render_init_marker:
+                self.render_fig, self.render_arrays = plt.subplots(3, 3)
+                for i in range(3):
+                    for j in range(3):
+                        self.render_arrays[i, j].axis("off")
+                self.render_artists = []
+                top_obs = self.render_top_view()
+                self.render_arrays[0, 1].set_title("F")
+                self.render_artists.append(self.render_arrays[0, 1].imshow(obs[0]))
+                self.render_arrays[1, 0].set_title("L")
+                self.render_artists.append(self.render_arrays[1, 0].imshow(obs[1]))
+                self.render_arrays[2, 1].set_title("B")
+                self.render_artists.append(self.render_arrays[2, 1].imshow(obs[2]))
+                self.render_arrays[1, 2].set_title("R")
+                self.render_artists.append(self.render_arrays[1, 2].imshow(obs[3]))
+                self.render_arrays[1, 1].set_title("Top down")
+                self.render_artists.append(self.render_arrays[1, 1].imshow(top_obs))
+                self.render_init_marker = False
+            else:
+                top_obs = self.render_top_view()
+                self.render_artists[0].set_data(obs[0])
+                self.render_artists[1].set_data(obs[1])
+                self.render_artists[2].set_data(obs[2])
+                self.render_artists[3].set_data(obs[3])
+                self.render_artists[4].set_data(top_obs)
+        self.render_fig.canvas.draw()
+        plt.pause(0.01)
+
     """ Auxiliary functions
     """
-    # check whether the agent reaches the goal
     def _reach_goal(self):
-        # check the distance
+        """
+            Compute the relative distance between the agent and the goal.
+            Return distance and direction difference
+        """
         agent_pos = self.agent.pos
         agent_ori = self.agent.dir
 
         goal_pos = self.goal_info['pos']
         goal_ori = self.goal_info['ori']
 
-        # compute the distance
+        # compute the distance and the orientation difference
         return np.sum((agent_pos - goal_pos) ** 2), np.abs(agent_ori - goal_ori)
 
-    # agent spawn function
     def _place_agent(self, room=None, pos=None, ori=0):
+        """ Place the agent """
         return self.place_entity(
                     ent=self.agent,
                     room=room,
@@ -237,18 +302,19 @@ class TextMaze(MiniWorldEnv):
                 )
 
     def _place_goal(self, room=None, pos=None, ori=0):
+        """ Place the goal """
         return self.place_entity(
-                    ent=Box(color='yellow'),
+                    ent=Box(color='red'),
                     room=room,
-                    pos=pos,
-                    dir=ori
+                    pos=pos,  # goal position
+                    dir=ori   # goal direction
                 )
 
     @staticmethod
-    # load the map from text file
-    def _load_txt():
+    def _load_txt(f_path):
+        """ Load the map from text file. """
         # read the map from text file
-        with open('./env/maze_test.txt', 'r') as f_in:
+        with open(f_path, 'r') as f_in:
             file_data = f_in.readlines()
         f_in.close()
 
@@ -258,7 +324,7 @@ class TextMaze(MiniWorldEnv):
         # get the rows and cols
         rows = len(map_data)
         cols = len(map_data[0])
-        print(f"Maze: row num = {rows}, col num = {cols}")
+        print(f"Maze size: row num = {rows}, col num = {cols}")
         # create the array map
         map_array = np.zeros((rows, cols))
         # store valid locations
@@ -274,8 +340,8 @@ class TextMaze(MiniWorldEnv):
                     map_valid_locations.append((l_idx - 1, s_idx - 1))
         return map_array, map_valid_locations
 
-    # maze generation function
     def _gen_world(self):
+        """ Generate the maze """
         # customize this function to generate all the rooms
         rows = []
 
@@ -363,10 +429,6 @@ class TextMaze(MiniWorldEnv):
             agent_room_loc = self.valid_locations[0]
             goal_room_loc = self.valid_locations[-1]
 
-        # Debug position
-        agent_room_loc = (0, 3)
-        goal_room_loc = (4, 4)
-
         # place the agent randomly
         print(f"Agent is spawned in room {agent_room_loc}")
         agent_room = rows[agent_room_loc[0]][agent_room_loc[1]]
@@ -380,8 +442,8 @@ class TextMaze(MiniWorldEnv):
         # initialize the goal at the center of the room
         self.goal_info['pos'] = np.array([goal_room.mid_x, 0, goal_room.mid_z])
         self.goal_info['ori'] = 0
-        # put the red box in at the goal location
-        # self.place_entity(ent=Box(color='red'), pos=self.goal_info['pos'], dir=self.goal_info['ori'])
+        # place the goal as a red box
+        self._place_goal(room=goal_room, pos=self.goal_info['pos'])
 
     # render customizable observations
     def _render_customize_obs(self):
