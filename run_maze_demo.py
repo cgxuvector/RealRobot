@@ -9,7 +9,7 @@ if __name__ == "__main__":
     maze_configurations = {
         'room_size': 2,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'panorama-rgb',
+        'obs_name': 'panorama-depth',
         'max_episode_step': 1000,
         'random_init': False,
         'random_goal': False
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # reset
     obs = myMaze.reset()
-    # myMaze.render()
+    myMaze.render()
 
     # start test
     for i in range(1000):
@@ -34,11 +34,8 @@ if __name__ == "__main__":
         act = myMaze.action_space.sample()
         # step
         obs, reward, done, _ = myMaze.step(act)
-        # render
-        # myMaze.render()
 
-        Debug.set_trace()
-
+        myMaze.render()
         if done:
             myMaze.reset()
 

@@ -16,10 +16,7 @@ from gym import spaces
 from gym_miniworld.miniworld import MiniWorldEnv
 from gym_miniworld.entity import *
 from gym_miniworld.opengl import *
-
 import matplotlib.pyplot as plt
-
-import IPython.terminal.debugger as Debug
 
 
 class TextMaze(MiniWorldEnv):
@@ -530,11 +527,8 @@ class TextMaze(MiniWorldEnv):
             self.render_obs(frame_buffer)
             return frame_buffer.get_depth_map(0.04, 100.0)
 
-# How to get the goal observation: place the agent to the middle of the room. retrieve the observation
-# Todo: unable to get the true state
-# Todo: wrap into a goal-rl observation: {'observation', 'achieved_goal', 'desired_goal'}
 
-
+# Todo future: Better implementation
 class GoalTextMaze(MiniWorldEnv):
     """
     3-D Maze environment
@@ -573,7 +567,7 @@ class GoalTextMaze(MiniWorldEnv):
         :param max_episode_steps (default): Maximal number of steps per episode
         :param forward_step_size (added): step size for forward/backward actions, range in (0, 1)
         :param turn_step_size (added): turn angle for turn left/turn right actions, degree number (0, 360)
-        :param obs_name (added): observation name. Supporting rgb, depth, rgb-d, panorama-rgb, panorama-depth
+        :param obs_name (added): observation name. Supporting rgb, depth, rgb-d, panorama-rgb, panorama-depth, state
         :param rnd_init (added): flag for setting the initial agent location randomly
         :param rnd_goal (added): flag for setting the goal location randomly
         :param kwargs: Other parameters (default)
@@ -684,16 +678,20 @@ class GoalTextMaze(MiniWorldEnv):
         # Pre-compile static parts of the environment into a display list
         self._render_static()
 
+        # set the agent to the goal room
         goal_room = self.goal_info['room']
         self._place_agent(goal_room, pos=np.array([goal_room.mid_x, 0, goal_room.mid_z]))
+        # retrieve the observation of the goal
         self.goal_info['goal_obs'] = self._render_customize_obs()
 
-        # render the observation (function is written below in auxiliary functions)
+        # reset the agent to the start room
         start_room = self.start_info['room']
+        # retrieve the observation
         self._place_agent(start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
         obs = self._render_customize_obs()
 
-        return obs
+        # construct the goal-rl observation
+        return {'observation': obs, 'achieved_goal': obs, 'desired_goal': self.goal_info['goal_obs']}
 
     def step(self, action):
         """
@@ -735,6 +733,9 @@ class GoalTextMaze(MiniWorldEnv):
         else:
             done = False
 
+        # construct the goal-rl observation
+        obs = {'observation': obs, 'achieved_goal': obs, 'desired_goal': self.goal_info['goal_obs']}
+
         return obs, reward, done, info
 
     def compute_reward(self):
@@ -757,6 +758,10 @@ class GoalTextMaze(MiniWorldEnv):
     def render(self, mode='human', close=False, view='agent'):
         # render the current observation
         obs = self._render_customize_obs()
+
+        # no need to visualize state
+        if self.observation_name == "state":
+            return obs
 
         # show the rendered observation
         if self.observation_name != "panorama-rgb" and self.observation_name != "panorama-depth":
@@ -795,7 +800,7 @@ class GoalTextMaze(MiniWorldEnv):
                 self.render_artists[3].set_data(obs[3])
                 self.render_artists[4].set_data(top_obs)
         self.render_fig.canvas.draw()
-        plt.pause(0.01)
+        plt.pause(0.1)
 
     """ Auxiliary functions
     """
@@ -992,6 +997,8 @@ class GoalTextMaze(MiniWorldEnv):
                 obs.append(tmp_obs)
             # reset the direction
             self.agent.dir = current_dir
+        elif self.observation_name == "state":
+            obs = [self.agent.pos[0], self.agent.pos[2], self.agent.dir]
         else:
             raise Exception("Invalid observation name.")
 
@@ -1053,6 +1060,24 @@ class GoalTextMaze(MiniWorldEnv):
 
     def plot_goal_obs(self):
         obs = self.goal_info['goal_obs']
+        top_down_obs = self.render_top_view()
+        fig, arrays = plt.subplots(3, 3)
+        for i in range(3):
+            for j in range(3):
+                arrays[i, j].axis("off")
+        arrays[0, 1].set_title("F")
+        arrays[0, 1].imshow(obs[0])
+        arrays[1, 0].set_title("L")
+        arrays[1, 0].imshow(obs[1])
+        arrays[2, 1].set_title("B")
+        arrays[2, 1].imshow(obs[2])
+        arrays[1, 2].set_title("R")
+        arrays[1, 2].imshow(obs[3])
+        arrays[1, 1].set_title('top down')
+        arrays[1, 1].imshow(top_down_obs)
+        plt.show()
+
+    def plot_panorama_obs(self, obs):
         top_down_obs = self.render_top_view()
         fig, arrays = plt.subplots(3, 3)
         for i in range(3):
