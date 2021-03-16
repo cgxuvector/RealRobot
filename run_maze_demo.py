@@ -7,9 +7,9 @@ import IPython.terminal.debugger as Debug
 if __name__ == "__main__":
     # test code
     maze_configurations = {
-        'room_size': 2,  # room size
+        'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'panorama-depth',
+        'obs_name': 'state',
         'max_episode_step': 1000,
         'random_init': False,
         'random_goal': False
