@@ -17,6 +17,7 @@ from gym_miniworld.miniworld import MiniWorldEnv
 from gym_miniworld.entity import *
 from gym_miniworld.opengl import *
 import matplotlib.pyplot as plt
+from skimage.transform import resize
 
 
 # class TextMaze(MiniWorldEnv):
@@ -801,7 +802,7 @@ class GoalTextMaze(MiniWorldEnv):
                 self.render_artists[3].set_data(obs[3])
                 self.render_artists[4].set_data(top_obs)
         self.render_fig.canvas.draw()
-        plt.pause(1)
+        plt.pause(0.01)
 
     """ Auxiliary functions
     """
@@ -982,12 +983,16 @@ class GoalTextMaze(MiniWorldEnv):
         # render the observation
         if self.observation_name == "depth":  # return depth observation; Shape: H x W
             obs = self.render_depth()
+            obs = resize(obs, (32, 32))
         elif self.observation_name == 'rgb-d':  # return RGB + depth observation; Shape: H x W x 4
             rgb_obs = obs
+            rgb_obs = resize(rgb_obs, (32, 32))
             d_obs = self.render_depth()
+            d_obs = resize(d_obs, (32, 32))
             obs = np.concatenate((rgb_obs, d_obs), axis=2)
         elif self.observation_name == 'rgb':  # return RGB observation; Shape: H x W x 3
             obs = obs
+            obs = resize(obs, (32, 32))
         elif self.observation_name == "panorama-rgb" or self.observation_name == "panorama-depth":
             # render panoramic observation
             obs = []
@@ -995,6 +1000,7 @@ class GoalTextMaze(MiniWorldEnv):
             for i in range(4):
                 select_dir = current_dir + 90 * i * np.pi / 180
                 tmp_obs = self._render_dir_obs(radian_dir=select_dir)
+                tmp_obs = resize(tmp_obs, (32, 32))
                 obs.append(tmp_obs)
             # reset the direction
             self.agent.dir = current_dir

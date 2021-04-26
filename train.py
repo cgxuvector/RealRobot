@@ -17,10 +17,11 @@ def parse_input_arguments():
     parser.add_argument("--random_goal", action="store_true", default=False)
     parser.add_argument("--reach_goal_eps", type=float, default=0.5)
     parser.add_argument("--max_episode_steps", type=int, default=100)
+    parser.add_argument("--room_size", type=int, default=1)
 
     # arguments for agent
     parser.add_argument("--dqn_mode", type=str, default="vanilla")
-    parser.add_argument("--gamma", type=float, default=0.95)
+    parser.add_argument("--gamma", type=float, default=0.995)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--lr", type=float, default=1e-3)
 
@@ -30,7 +31,7 @@ def parse_input_arguments():
     parser.add_argument("--start_train_step", type=int, default=1000)
     parser.add_argument("--total_time_steps", type=int, default=1000000)
     parser.add_argument("--memory_size", type=int, default=50000)
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--update_policy_freq", type=int, default=4)
     parser.add_argument("--update_target_freq", type=int, default=2000)
     parser.add_argument("--eval_policy_freq", type=int, default=100)
@@ -53,15 +54,16 @@ args = parse_input_arguments()
 env_params = {
     # for making agent
     'act_num': 4,
-    'obs_dim': 3,
-    'goal_dim': 3,
+    'obs_dim': 512,
+    'goal_dim': 512,
 
     # for making environment
     'obs_name': args.observation,
     'random_init': args.random_init,
     'random_goal': args.random_goal,
     'goal_reach_eps': args.reach_goal_eps,
-    'max_episode_steps': args.max_episode_steps
+    'max_episode_steps': args.max_episode_steps,
+    'room_size': args.room_size
 }
 
 agent_params = {
@@ -104,7 +106,7 @@ def make_agent():
 def make_envs():
     # create the training environment
     trn_env = GoalTextMaze(text_file='./env/maze_test.txt',
-                           room_size=1,  # room size
+                           room_size=env_params['room_size'],  # room size
                            wall_size=0.01,
                            max_episode_steps=env_params['max_episode_steps'],  # step size
                            obs_name=env_params['obs_name'],
@@ -114,7 +116,7 @@ def make_envs():
 
     # creat the testing environment
     tst_env = GoalTextMaze(text_file='./env/maze_test.txt',
-                           room_size=1,
+                           room_size=env_params['room_size'],
                            wall_size=0.01,
                            max_episode_steps=env_params['max_episode_steps'],
                            obs_name=env_params['obs_name'],

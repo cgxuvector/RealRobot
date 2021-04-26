@@ -3,6 +3,8 @@ import numpy as np
 from torch import nn
 from model.DeepNetwork import GoalDeepQNet
 
+import matplotlib.pyplot as plt
+
 import IPython.terminal.debugger as Debug
 
 
@@ -42,8 +44,8 @@ class GoalDQNAgent(object):
         self.dqn_mode = agent_params['dqn_mode']
         self.use_obs = agent_params['use_obs']
         self.gamma = agent_params['gamma']
-        self.behavior_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim)
-        self.target_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim)
+        self.behavior_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim, env_params['obs_name'])
+        self.target_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim, env_params['obs_name'])
 
         # initialize target network with behavior network
         self.behavior_policy_net.apply(customized_weights_init)
@@ -59,6 +61,7 @@ class GoalDQNAgent(object):
 
         # other parameters
         self.eps = 1
+        self.train_loss = []
 
     # get action
     def get_action(self, obs):
@@ -112,6 +115,8 @@ class GoalDQNAgent(object):
         self.optimizer.zero_grad()
         td_loss.backward()
         self.optimizer.step()
+
+        self.train_loss.append(td_loss.item())
 
     # update update target policy
     def update_target_policy(self):

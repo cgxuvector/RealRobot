@@ -24,7 +24,7 @@ class GoalDQNExperiment(object):
 
         # training parameters
         self.use_obs = trn_params['use_obs']
-        self.schedule = LinearSchedule(1, 0.01, trn_params['total_time_steps'] / 3)
+        self.schedule = LinearSchedule(1, 0.01, trn_params['total_time_steps'] / 2)
         self.use_her = trn_params['use_her']
         self.memory = GoalDQNReplayBuffer(trn_params['memory_size'])
         self.start_train_step = trn_params['start_train_step']
@@ -140,17 +140,24 @@ class GoalDQNExperiment(object):
         for t in pbar:
             # get one action
             self.agent.eps = self.schedule.get_value(t)
+            self.agent.eps = 0
             action = self.get_action(obs)
             # step in the environment
             next_obs, reward, done, _ = self.step(action)
 
+            # only done for the true goal
+            done = True if reward == 0 else False
+
             # add to the buffer
             self.memory.add(obs['observation'], action, reward, next_obs['observation'], done, obs['desired_goal'])
             rewards.append(reward)
-            #
-            # print(f"state={obs['observation']}, act={action}, next_state={next_obs['observation']}, reward={reward}, done={done}, goal={obs['desired_goal']}")
-            #
-            # Debug.set_trace()
+
+            # print(f" step = {t}"
+            #       f" state={obs['observation']},"
+            #       f" act={action},"
+            #       f" next_state={next_obs['observation']},"
+            #       f" reward={reward}, done={done},"
+            #       f" goal={obs['desired_goal']}")
 
             # check termination
             if done or episode_t == self.env.max_episode_steps:
@@ -187,6 +194,8 @@ class GoalDQNExperiment(object):
                 # add plots to tensorboard
                 self.tb.add_scalar("Mean success rate", eval_res, episode_idx)
                 self.tb.add_scalar("Expected return", G_res, episode_idx)
+                # add loss function
+                self.tb.add_scalar("Loss", self.agent.train_loss[-1] if len(self.agent.train_loss) > 0 else 0, episode_idx)
 
                 # reset the environment
                 episode_t, rewards = 0, []
@@ -213,7 +222,6 @@ class GoalDQNExperiment(object):
         self.tb.close()
 
 
-# todo: add HER implementation
 class HERDQNExperiment(object):
     def __init__(self, agent, env, test_env, trn_params):
         # initialize the experiment
