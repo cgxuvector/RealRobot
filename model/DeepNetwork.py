@@ -191,18 +191,18 @@ class PanoramaImgEncoder(nn.Module):
     def forward(self, x):
         if self.obs_type == 'panorama-rgb':
             if self.mode == "concat":  # we concatenate the 4 observations together
-                x = self.concat_rgb_encoder(x).view(-1, 128 * 2 * 2 * 4)
+                x = self.concat_rgb_encoder(x).reshape(-1, 128 * 2 * 2 * 4)
             elif self.mode == "channel":  # we group the 4 observations into a group
-                x = x.view(-1, 12, 32, 32)  # merge 4 observations into one with shape (12 x W x H)
-                x = self.channel_rgb_encoder(x).view(-1, 128 * 2 * 2)
+                x = x.reshape(-1, 12, 32, 32)  # merge 4 observations into one with shape (12 x W x H)
+                x = self.channel_rgb_encoder(x).reshape(-1, 128 * 2 * 2)
             else:
                 raise Exception(f"Invalid encoder mode. Expect concat or channel, but get {self.mode}")
         elif self.obs_type == 'panorama-depth':  # for depth images
             if self.mode == "concat":
-                x = self.concat_depth_encoder(x).view(-1, 128 * 2 * 2 * 4)
+                x = self.concat_depth_encoder(x).reshape(-1, 128 * 2 * 2 * 4)
             elif self.mode == "channel":
-                x = x.view(-1, 4, 32, 32)
-                x = self.channel_depth_encoder(x).view(-1, 128 * 2 * 2)
+                x = x.reshape(-1, 4, 32, 32)
+                x = self.channel_depth_encoder(x).reshape(-1, 128 * 2 * 2)
             else:
                 raise Exception(f"Invalid encoder mode. Expect concat or channel, but get {self.mode}")
         else:

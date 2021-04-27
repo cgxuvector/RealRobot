@@ -35,17 +35,15 @@ class GoalDQNAgent(object):
         self.agent_params = agent_params
 
         # environment parameters
-        self.action_space = np.linspace(0, env_params['act_num'], env_params['act_num'], endpoint=False).astype('uint8')
-        self.action_dim = env_params['act_num']
-        self.obs_dim = env_params['obs_dim']
-        self.goal_dim = env_params['goal_dim']
+        self.action_space = np.linspace(0, 4, 4, endpoint=False).astype('uint8')
+        self.action_dim = 4
 
         # create behavior policy and target networks
         self.dqn_mode = agent_params['dqn_mode']
         self.use_obs = agent_params['use_obs']
         self.gamma = agent_params['gamma']
-        self.behavior_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim, env_params['obs_name'])
-        self.target_policy_net = GoalDeepQNet(self.obs_dim, self.goal_dim, self.action_dim, env_params['obs_name'])
+        self.behavior_policy_net = GoalDeepQNet(env_params['obs_name'], env_params['panorama_mode'])
+        self.target_policy_net = GoalDeepQNet(env_params['obs_name'], env_params['panorama_mode'])
 
         # initialize target network with behavior network
         self.behavior_policy_net.apply(customized_weights_init)
@@ -68,12 +66,7 @@ class GoalDQNAgent(object):
         if np.random.random() < self.eps:  # with probability eps, the agent selects a random action
             action = np.random.choice(self.action_space, 1)[0]
         else:  # with probability 1 - eps, the agent selects a greedy policy
-            if self.env_params['obs_name'] != 'state':
-                current_obs = torch.tensor(obs['observation'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
-                goal_obs = torch.tensor(obs['desired_goal'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
-            else:
-                current_obs = self._arr_to_tensor(obs['observation']).view(1, -1)
-                goal_obs = self._arr_to_tensor(np.array(obs['desired_goal'])).view(1, -1)
+            current_obs, goal_obs = self._obs_to_tensor(obs)
             with torch.no_grad():
                 q_values = self.behavior_policy_net(current_obs, goal_obs)
                 action = q_values.max(dim=1)[1].item()
@@ -137,6 +130,21 @@ class GoalDQNAgent(object):
         arr_tensor = torch.from_numpy(arr).float().to(self.device)
         return arr_tensor
 
+    def _obs_to_tensor(self, obs):
+        if self.env_params['obs_name'] == "state":
+            obs_s = self._arr_to_tensor(np.array(obs['observation'])).view(1, -1)
+            obs_g = self._arr_to_tensor(np.array(obs['desired_goal'])).view(1, -1)
+        elif self.env_params['obs_name'] == 'rgb' or self.env_params['obs_name'] == 'depth':
+            obs_s = torch.tensor(obs['observation'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
+            obs_g = torch.tensor(obs['desired_goal'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
+        elif self.env_params['obs_name'] == 'panorama-rgb' or self.env_params['obs_name'] == 'panorama-depth':
+            obs_s = torch.tensor(np.array(obs['observation']), device=self.device).float().permute(0, 3, 1, 2)
+            obs_g = torch.tensor(np.array(obs['desired_goal']), device=self.device).float().permute(0, 3, 1, 2)
+        else:
+            raise Exception('Invalid observation name')
+
+        return obs_s, obs_g
+
     def _batch_to_tensor(self, batch_data):
         # store the tensor
         batch_data_tensor = {'obs': [], 'action': [], 'reward': [], 'next_obs': [], 'done': [], 'goal': []}
@@ -146,17 +154,25 @@ class GoalDQNAgent(object):
         if self.env_params['obs_name'] == 'state':
             # convert to tensors
             batch_data_tensor['obs'] = torch.tensor(obs_arr, dtype=torch.float32).to(self.device)
-            batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
-            batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
             batch_data_tensor['next_obs'] = torch.tensor(next_obs_arr, dtype=torch.float32).to(self.device)
-            batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
             batch_data_tensor['goal'] = torch.tensor(goal_arr, dtype=torch.float32).to(self.device)
-        else:
+        elif self.env_params['obs_name'] == 'rgb' or self.env_params['obs_name'] == 'depth':
             batch_data_tensor['obs'] = torch.tensor(obs_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
-            batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
-            batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
             batch_data_tensor['next_obs'] = torch.tensor(next_obs_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
-            batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
             batch_data_tensor['goal'] = torch.tensor(goal_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
+        elif self.env_params['obs_name'] == 'panorama-rgb':
+            batch_data_tensor['obs'] = torch.tensor(np.array(obs_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 3).permute(0, 3, 1, 2)
+            batch_data_tensor['next_obs'] = torch.tensor(np.array(next_obs_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 3).permute(0, 3, 1, 2)
+            batch_data_tensor['goal'] = torch.tensor(np.array(goal_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 3).permute(0, 3, 1, 2)
+        elif self.env_params['obs_name'] == 'panorama-depth':
+            batch_data_tensor['obs'] = torch.tensor(np.array(obs_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 1).permute(0, 3, 1, 2)
+            batch_data_tensor['next_obs'] = torch.tensor(np.array(next_obs_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 1).permute(0, 3, 1, 2)
+            batch_data_tensor['goal'] = torch.tensor(np.array(goal_arr), dtype=torch.float32).to(self.device).reshape(-1, 32, 32, 1).permute(0, 3, 1, 2)
+        else:
+            raise Exception("Error")
+
+        batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
+        batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
+        batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
 
         return batch_data_tensor
