@@ -12,29 +12,29 @@ def parse_input_arguments():
     parser = argparse.ArgumentParser()
 
     # arguments for environment
-    parser.add_argument("--observation", type=str, default="state")
+    parser.add_argument("--observation", type=str, default="depth")
     parser.add_argument("--random_init", action="store_true", default=False)
     parser.add_argument("--random_goal", action="store_true", default=False)
     parser.add_argument("--reach_goal_eps", type=float, default=0.5)
-    parser.add_argument("--max_episode_steps", type=int, default=100)
+    parser.add_argument("--max_episode_steps", type=int, default=500)
     parser.add_argument("--room_size", type=int, default=1)
 
     # arguments for agent
-    parser.add_argument("--dqn_mode", type=str, default="vanilla")
+    parser.add_argument("--dqn_mode", type=str, default="double")
     parser.add_argument("--gamma", type=float, default=0.995)
     parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--lr", type=float, default=1e-4)
 
     # arguments for training
     parser.add_argument("--env_name", type=str, default="test_env")
     parser.add_argument("--use_obs", action="store_true", default=False)
     parser.add_argument("--start_train_step", type=int, default=1000)
     parser.add_argument("--total_time_steps", type=int, default=1000000)
-    parser.add_argument("--memory_size", type=int, default=50000)
+    parser.add_argument("--memory_size", type=int, default=100000)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--update_policy_freq", type=int, default=4)
     parser.add_argument("--update_target_freq", type=int, default=2000)
-    parser.add_argument("--eval_policy_freq", type=int, default=100)
+    parser.add_argument("--eval_policy_freq", type=int, default=1000)
 
     # arguments for techniques
     parser.add_argument("--use_her", action="store_true", default=False)

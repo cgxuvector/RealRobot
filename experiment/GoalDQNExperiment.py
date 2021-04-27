@@ -99,20 +99,14 @@ class GoalDQNExperiment(object):
                    save_dir + '/model/' + self.trn_params['model_name'] + '.pt')
 
     def save_data(self, save_dir):
-        np.save(f'./{save_dir}/trn_return.npy', self.trn_returns)
-        np.save(f'./{save_dir}/trn_acc.npy', self.eval_success)
+        np.save(f'./{save_dir}/data/trn_return.npy', self.trn_returns)
+        np.save(f'./{save_dir}/data/trn_acc.npy', self.eval_success)
 
     def run(self):
         # training variables
         episode_t = 0
         episode_idx = 0
         rewards = []
-
-        # create folders to store the results
-        current_time = datetime.now()
-        date = current_time.strftime("%m-%d")
-        label = self.trn_params['run_label']
-        results_dir = os.path.join(self.trn_params['save_dir'], date, label)
 
         # create the saving directory
         current_time = datetime.today()
@@ -140,7 +134,6 @@ class GoalDQNExperiment(object):
         for t in pbar:
             # get one action
             self.agent.eps = self.schedule.get_value(t)
-            self.agent.eps = 0
             action = self.get_action(obs)
             # step in the environment
             next_obs, reward, done, _ = self.step(action)
@@ -152,12 +145,20 @@ class GoalDQNExperiment(object):
             self.memory.add(obs['observation'], action, reward, next_obs['observation'], done, obs['desired_goal'])
             rewards.append(reward)
 
+            # if not self.use_obs:
             # print(f" step = {t}"
-            #       f" state={obs['observation']},"
-            #       f" act={action},"
-            #       f" next_state={next_obs['observation']},"
-            #       f" reward={reward}, done={done},"
-            #       f" goal={obs['desired_goal']}")
+            #           f" state={obs['observation']},"
+            #           f" act={action},"
+            #           f" next_state={next_obs['observation']},"
+            #           f" reward={reward}, done={done},"
+            #           f" goal={obs['desired_goal']}")
+            # else:
+            # print(f" step = {t}, "
+            #           f" agent pos = {self.env.agent.pos},"
+            #           f" goal pos = {self.env.goal_info['pos']}, "
+            #           f" distance = {self.env.goal_info['dist']}, "
+            #           f" done={done},"
+            #           f" reward={reward}")
 
             # check termination
             if done or episode_t == self.env.max_episode_steps:
@@ -184,8 +185,8 @@ class GoalDQNExperiment(object):
                     f"Ep={episode_idx} | "
                     f"G={np.mean(self.trn_returns[-10:]) if self.trn_returns else 0:.2f} | "
                     f"Eval={np.mean(self.eval_success[-10:]) if self.eval_success else 0:.2f} | "
-                    f"Init={start_pos} | "
-                    f"Goal={goal_pos}"
+                    f"Init={self.env.start_info['pos']} | "
+                    f"Goal={self.env.goal_info['pos']}"
                 )
 
                 eval_res = np.mean(self.eval_success[-10:]) if self.eval_success else 0
@@ -219,6 +220,7 @@ class GoalDQNExperiment(object):
 
         # save the results
         self.save_data(results_dir)
+        self.save_model(results_dir)
         self.tb.close()
 
 

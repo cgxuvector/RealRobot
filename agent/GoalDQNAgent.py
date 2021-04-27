@@ -68,8 +68,12 @@ class GoalDQNAgent(object):
         if np.random.random() < self.eps:  # with probability eps, the agent selects a random action
             action = np.random.choice(self.action_space, 1)[0]
         else:  # with probability 1 - eps, the agent selects a greedy policy
-            current_obs = self._arr_to_tensor(obs['observation']).view(1, -1)
-            goal_obs = self._arr_to_tensor(np.array(obs['desired_goal'])).view(1, -1)
+            if self.env_params['obs_name'] != 'state':
+                current_obs = torch.tensor(obs['observation'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
+                goal_obs = torch.tensor(obs['desired_goal'], device=self.device).float().unsqueeze(dim=0).permute(0, 3, 1, 2)
+            else:
+                current_obs = self._arr_to_tensor(obs['observation']).view(1, -1)
+                goal_obs = self._arr_to_tensor(np.array(obs['desired_goal'])).view(1, -1)
             with torch.no_grad():
                 q_values = self.behavior_policy_net(current_obs, goal_obs)
                 action = q_values.max(dim=1)[1].item()
@@ -138,12 +142,21 @@ class GoalDQNAgent(object):
         batch_data_tensor = {'obs': [], 'action': [], 'reward': [], 'next_obs': [], 'done': [], 'goal': []}
         # get the numpy arrays
         obs_arr, action_arr, reward_arr, next_obs_arr, done_arr, goal_arr = batch_data
-        # convert to tensors
-        batch_data_tensor['obs'] = torch.tensor(obs_arr, dtype=torch.float32).to(self.device)
-        batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
-        batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
-        batch_data_tensor['next_obs'] = torch.tensor(next_obs_arr, dtype=torch.float32).to(self.device)
-        batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
-        batch_data_tensor['goal'] = torch.tensor(goal_arr, dtype=torch.float32).to(self.device)
+
+        if self.env_params['obs_name'] == 'state':
+            # convert to tensors
+            batch_data_tensor['obs'] = torch.tensor(obs_arr, dtype=torch.float32).to(self.device)
+            batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
+            batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
+            batch_data_tensor['next_obs'] = torch.tensor(next_obs_arr, dtype=torch.float32).to(self.device)
+            batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
+            batch_data_tensor['goal'] = torch.tensor(goal_arr, dtype=torch.float32).to(self.device)
+        else:
+            batch_data_tensor['obs'] = torch.tensor(obs_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
+            batch_data_tensor['action'] = torch.tensor(action_arr).long().view(-1, 1).to(self.device)
+            batch_data_tensor['reward'] = torch.tensor(reward_arr, dtype=torch.float32).view(-1, 1).to(self.device)
+            batch_data_tensor['next_obs'] = torch.tensor(next_obs_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
+            batch_data_tensor['done'] = torch.tensor(done_arr, dtype=torch.float32).view(-1, 1).to(self.device)
+            batch_data_tensor['goal'] = torch.tensor(goal_arr, dtype=torch.float32).to(self.device).permute(0, 3, 1, 2)
 
         return batch_data_tensor

@@ -547,7 +547,7 @@ class GoalTextMaze(MiniWorldEnv):
     def __init__(
         self,
         text_file=None,
-        room_size=3,
+        room_size=1,
         wall_size=0.25,
         max_episode_steps=100,
         forward_step_size=0.5,  # range in (0, 1) float
