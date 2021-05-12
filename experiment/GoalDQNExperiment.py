@@ -220,7 +220,6 @@ class GoalDQNExperiment(object):
 
         # save the results
         self.save_data(results_dir)
-        self.save_model(results_dir)
         self.tb.close()
 
 

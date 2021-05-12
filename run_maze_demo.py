@@ -9,14 +9,14 @@ if __name__ == "__main__":
     maze_configurations = {
         'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'panorama-depth',
+        'obs_name': 'state',
         'max_episode_step': 1000,
         'random_init': False,
         'random_goal': False
     }
 
     # create the maze from text
-    myMaze = GoalTextMaze(text_file='./env/maze_test.txt',
+    myMaze = GoalTextMaze(text_file='env/mazes/maze_test.txt',
                           room_size=maze_configurations['room_size'],
                           wall_size=maze_configurations['wall_size'],
                           obs_name=maze_configurations['obs_name'],
@@ -28,12 +28,27 @@ if __name__ == "__main__":
     obs = myMaze.reset()
     myMaze.render()
 
+    print(f"Start pos = {myMaze.start_info['pos']}, goal pos = {myMaze.goal_info['pos']}")
+
     # start test
-    for i in range(1000):
+    for i in range(50):
         # random sample an action from the action space
         act = myMaze.action_space.sample()
+        act = 0
+        # if i == 0:
+        #     act = 1
+        # else:
+        #     act = 2
         # step
-        obs, reward, done, _ = myMaze.step(act)
+        next_obs, reward, done, _ = myMaze.step(act)
+
+        print(f"Current state = {obs['observation']},"
+              f" action = {myMaze.ACTION_NAME[act]},"
+              f" next state = {next_obs['observation']}")
+
+        # print(myMaze.agent.pos)
+
+        obs = next_obs
 
         myMaze.render()
         if done:
