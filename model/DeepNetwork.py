@@ -245,8 +245,8 @@ class GoalDeepQNet(nn.Module):
                 act_dim = 4
         else:
             # for debug case
-            obs_dim = 3
-            goal_dim = 3
+            obs_dim = 4  # [x, y, sin(theta), cos(theta)]
+            goal_dim = 4  # [x, y, sin(theta), cos(theta)]
             act_dim = 4
 
         # feed forward network

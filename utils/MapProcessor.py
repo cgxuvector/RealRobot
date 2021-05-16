@@ -97,12 +97,12 @@ def resize_optim(data, target_shape):
     return resized_data
 
 
-def manual_mask(loc, m):
+def manual_mask_ego_motion(loc, m):
     # Todo: it is useful to add a scope controller
-    loc = loc[0:2] if len(loc) == 3 else loc  # for egocentric action
+    x, y = loc[0:2] if len(loc) == 4 else loc  # for egocentric action
 
     # convert back to the map location
-    map_loc = (np.array(loc) // 3).astype(int) + np.array([1, 1])
+    map_loc = (np.array([y, x]) // 3).astype(int) + np.array([1, 1])
 
     # compute the rectangle of the local map
     from_loc = map_loc + np.array([-1, -1])

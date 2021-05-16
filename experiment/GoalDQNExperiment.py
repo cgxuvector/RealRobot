@@ -145,20 +145,20 @@ class GoalDQNExperiment(object):
             self.memory.add(obs['observation'], action, reward, next_obs['observation'], done, obs['desired_goal'])
             rewards.append(reward)
 
-            # if not self.use_obs:
-            # print(f" step = {t}"
-            #           f" state={obs['observation']},"
-            #           f" act={action},"
-            #           f" next_state={next_obs['observation']},"
-            #           f" reward={reward}, done={done},"
-            #           f" goal={obs['desired_goal']}")
-            # else:
-            # print(f" step = {t}, "
-            #           f" agent pos = {self.env.agent.pos},"
-            #           f" goal pos = {self.env.goal_info['pos']}, "
-            #           f" distance = {self.env.goal_info['dist']}, "
-            #           f" done={done},"
-            #           f" reward={reward}")
+            if not self.use_obs:
+                print(f" step = {t}"
+                      f" state={obs['observation']},"
+                      f" act={action},"
+                      f" next_state={next_obs['observation']},"
+                      f" reward={reward}, done={done},"
+                      f" goal={obs['desired_goal']}")
+            else:
+                print(f" step = {t}, "
+                      f" agent pos = {self.env.agent.pos},"
+                      f" goal pos = {self.env.goal_info['pos']}, "
+                      f" distance = {self.env.goal_info['dist']}, "
+                      f" done={done},"
+                      f" reward={reward}")
 
             # check termination
             if done or episode_t == self.env.max_episode_steps:

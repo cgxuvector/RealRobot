@@ -292,28 +292,33 @@ class DeterministicDynaModel(nn.Module):
 
 
 class HyperNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, use_ego_motion):
         super(HyperNetwork, self).__init__()
+        # use ego motion
+        self.use_ego_motion = use_ego_motion
+
         # convolutional encoder
         self.conv_layer = MapEncoder('conv2d')
 
         # generate the weight for the first layer
         # add non-linearity
-        # self.w1_fc = nn.Sequential(
-        #     nn.Linear(512, 1024),
-        #     nn.ReLU(),
-        #     nn.Linear(1024, 1024),
-        #     nn.ReLU(),
-        #     nn.Linear(1024, 3 * 256)
-        # )
-        # for ego centric action
-        self.w1_fc = nn.Sequential(
-            nn.Linear(512, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 4 * 256)
-        )
+        if not use_ego_motion:
+            self.w1_fc = nn.Sequential(
+                nn.Linear(512, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 3 * 256)
+            )
+        else:
+            # for ego centric action
+            self.w1_fc = nn.Sequential(
+                nn.Linear(512, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 5 * 256)
+            )
 
         # generate the bias for the first layer
         self.b1_fc = nn.Sequential(
@@ -343,37 +348,41 @@ class HyperNetwork(nn.Module):
         )
 
         # generate the weight for the second layer
-        # self.w3_fc = nn.Sequential(
-        #     nn.Linear(512, 1024),
-        #     nn.ReLU(),
-        #     nn.Linear(1024, 1024),
-        #     nn.ReLU(),
-        #     nn.Linear(1024, 256 * 2)
-        # )
-        self.w3_fc = nn.Sequential(
-            nn.Linear(512, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, 256 * 3)
-        )
+        if not use_ego_motion:
+            self.w3_fc = nn.Sequential(
+                nn.Linear(512, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 256 * 2)
+            )
+        else:
+            self.w3_fc = nn.Sequential(
+                nn.Linear(512, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, 256 * 4)
+            )
 
         # generate the bias for the second layer
-        # self.b3_fc = nn.Sequential(
-        #     nn.Linear(512, 128),
-        #     nn.ReLU(),
-        #     nn.Linear(128, 64),
-        #     nn.ReLU(),
-        #     nn.Linear(64, 2)
-        # )
-        # for egocentric data
-        self.b3_fc = nn.Sequential(
-            nn.Linear(512, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, 3)
-        )
+        if not use_ego_motion:
+            self.b3_fc = nn.Sequential(
+                nn.Linear(512, 128),
+                nn.ReLU(),
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, 2)
+            )
+        else:
+            # for egocentric data
+            self.b3_fc = nn.Sequential(
+                nn.Linear(512, 128),
+                nn.ReLU(),
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, 4)
+            )
 
     def forward(self, m):
         # generate the map embedding
@@ -389,15 +398,18 @@ class HyperNetwork(nn.Module):
 
         b_size = m.shape[0]
         # change the dimension for egocentric data
-        # w1 = self.w1_fc(x).view(b_size, 3, 256)
-        w1 = self.w1_fc(x).view(b_size, 4, 256)
+        if not self.use_ego_motion:
+            w1 = self.w1_fc(x).view(b_size, 3, 256)
+            w3 = self.w3_fc(x).view(b_size, 256, 2)
+            b3 = self.b3_fc(x).view(b_size, 1, 2)
+        else:
+            w1 = self.w1_fc(x).view(b_size, 5, 256)
+            w3 = self.w3_fc(x).view(b_size, 256, 4)
+            b3 = self.b3_fc(x).view(b_size, 1, 4)
+
         b1 = self.b1_fc(x).view(b_size, 1, 256)
         w2 = self.w2_fc(x).view(b_size, 256, 256)
         b2 = self.b2_fc(x).view(b_size, 1, 256)
-        # w3 = self.w3_fc(x).view(b_size, 256, 2)
-        # b3 = self.b3_fc(x).view(b_size, 1, 2)
-        w3 = self.w3_fc(x).view(b_size, 256, 3)
-        b3 = self.b3_fc(x).view(b_size, 1, 3)
 
         # return the weights
         return [w1, b1, w2, b2, w3, b3]

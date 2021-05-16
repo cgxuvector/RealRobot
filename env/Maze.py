@@ -47,6 +47,7 @@ class GoalTextMaze(MiniWorldEnv):
         obs_name="rgb",
         rnd_init=False,
         rnd_goal=False,
+        action_num=4,
         goal_reach_eps=1e-3,  # values indicates the goal is reached.
         **kwargs
     ):
@@ -119,7 +120,9 @@ class GoalTextMaze(MiniWorldEnv):
             **kwargs
         )
 
-        self.action_space = spaces.Discrete(len(self.ACTION_NAME))  # create the action space
+        self.action_num = action_num
+        self.ACTION_NAME = [self.ACTION_NAME[i] for i in range(action_num)]
+        self.action_space = spaces.Discrete(action_num)  # create the action space
 
     def reset(self):
         """
@@ -488,11 +491,8 @@ class GoalTextMaze(MiniWorldEnv):
             # reset the direction
             self.agent.dir = current_dir
         elif self.observation_name == "state":
-            # normalize the agent direction to [0, 2 * np.pi)
-            # ori = self.agent.dir % (np.pi * 2)
-            # ori = ori + 2*np.pi if ori < 0 else ori
-            ori = self.agent.dir
-            obs = np.array([self.agent.pos[0], self.agent.pos[2], ori])
+            # normalize the agent direction using sin and cos
+            obs = np.array([self.agent.pos[0], self.agent.pos[2], np.sin(self.agent.dir), np.cos(self.agent.dir)])
         else:
             raise Exception("Invalid observation name.")
 

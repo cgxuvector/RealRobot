@@ -13,6 +13,7 @@ def parse_input_arguments():
 
     # arguments for environment
     parser.add_argument("--observation", type=str, default="state")
+    parser.add_argument("--action_num", type=int, default=4)
     parser.add_argument("--panorama_mode", type=str, default='concat')
     parser.add_argument("--random_init", action="store_true", default=False)
     parser.add_argument("--random_goal", action="store_true", default=False)
@@ -60,7 +61,9 @@ env_params = {
     'random_goal': args.random_goal,
     'goal_reach_eps': args.reach_goal_eps,
     'max_episode_steps': args.max_episode_steps,
-    'room_size': args.room_size
+    'room_size': args.room_size,
+
+    'action_num': args.action_num
 }
 
 agent_params = {
@@ -109,7 +112,8 @@ def make_envs():
                            obs_name=env_params['obs_name'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
-                           goal_reach_eps=env_params['goal_reach_eps'])  # stop epsilon
+                           goal_reach_eps=env_params['goal_reach_eps'],
+                           action_num=env_params['action_num'])  # stop epsilon
 
     # creat the testing environment
     tst_env = GoalTextMaze(text_file='env/mazes/maze_test.txt',
@@ -119,7 +123,8 @@ def make_envs():
                            obs_name=env_params['obs_name'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
-                           goal_reach_eps=env_params['goal_reach_eps'])
+                           goal_reach_eps=env_params['goal_reach_eps'],
+                           action_num=env_params['action_num'])
 
     return [trn_env, tst_env]
 
@@ -132,8 +137,5 @@ if __name__ == "__main__":
     envs = make_envs()
 
     # make the experiment runner
-    if training_params['use_her']:
-        myExperiment = HERDQNExperiment(myAgent, envs[0], envs[1], training_params)
-    else:
-        myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
+    myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
     myExperiment.run()

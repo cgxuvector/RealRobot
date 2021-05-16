@@ -48,11 +48,11 @@ class HyperModel(object):
 
     def load_model(self):
         # define the models
-        hyper_model = HyperNetwork().to(self.device)
+        hyper_model = HyperNetwork(use_ego_motion=True).to(self.device)
         dyna_model = DynamicModel().to(self.device)
 
         # load the trained parameters
-        hyper_model.load_state_dict(torch.load(os.path.join(self.configs['model_path'], 'best_eval_hyper_model.pt'),
+        hyper_model.load_state_dict(torch.load(os.path.join(self.configs['model_path'], 'trn_hyper_model.pt'),
                                                map_location="cuda:0"))
         hyper_model.eval()
 
@@ -203,50 +203,48 @@ class HyperModel(object):
     # rewrite the function for ego_motion
     def plot_prediction_error_heat_map_ego_motion(self, m_id=None):
         # define the step function as an inner function
-        def inner_step_func(s, a, m):
+        def inner_step_func(s, a, m, o):
             # copy
             next_s = s.copy()
             # action list
             if a == 0:  # turn left
-                next_s[2] += np.pi / 2
+                o += np.pi / 2
+                next_s = next_s[0:2] + [np.sin(o), np.cos(o)]
             elif a == 1:  # turn right
-                next_s[2] -= np.pi / 2
+                o -= np.pi / 2
+                next_s = next_s[0:2] + [np.sin(o), np.cos(o)]
             elif a == 2:  # forward
                 # determine the orientation
-                # current_orientation = next_s[2] % (np.pi * 2)
-                current_orientation = next_s[2]
-                if current_orientation == 0:  # east
-                    tmp_pos = [next_s[0] + 0.5, next_s[1], next_s[2]]
+                if o == 0:  # east
+                    tmp_pos = [next_s[0] + 0.5, next_s[1], np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == np.pi / 2:  # north
-                    tmp_pos = [next_s[0], next_s[1] - 0.5, next_s[2]]
+                elif o == np.pi / 2:  # north
+                    tmp_pos = [next_s[0], next_s[1] - 0.5, np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == np.pi:  # west
-                    tmp_pos = [next_s[0] - 0.5, next_s[1], next_s[2]]
+                elif o == np.pi:  # west
+                    tmp_pos = [next_s[0] - 0.5, next_s[1], np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == 3 * np.pi / 2:  # south
-                    tmp_pos = [next_s[0], next_s[1] + 0.5, next_s[2]]
+                elif o == 3 * np.pi / 2:  # south
+                    tmp_pos = [next_s[0], next_s[1] + 0.5, np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
                 else:
-                    raise Exception(f"Wrong orientation. {current_orientation}")
+                    raise Exception(f"Wrong orientation. {o}")
             elif a == 3:  # backward
                 # determine the orientation
-                # current_orientation = next_s[2] % (np.pi * 2)
-                current_orientation = next_s[2]
-                if current_orientation == 0:  # east
-                    tmp_pos = [next_s[0] - 0.5, next_s[1], next_s[2]]
+                if o == 0:  # east
+                    tmp_pos = [next_s[0] - 0.5, next_s[1], np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == np.pi / 2:  # north
-                    tmp_pos = [next_s[0], next_s[1] + 0.5, next_s[2]]
+                elif o == np.pi / 2:  # north
+                    tmp_pos = [next_s[0], next_s[1] + 0.5, np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == np.pi:  # west
-                    tmp_pos = [next_s[0] + 0.5, next_s[1], next_s[2]]
+                elif o == np.pi:  # west
+                    tmp_pos = [next_s[0] + 0.5, next_s[1], np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
-                elif current_orientation == 3 * np.pi / 2:  # south
-                    tmp_pos = [next_s[0], next_s[1] - 0.5, next_s[2]]
+                elif o == 3 * np.pi / 2:  # south
+                    tmp_pos = [next_s[0], next_s[1] - 0.5, np.sin(o), np.cos(o)]
                     next_s = tmp_pos if m[int(tmp_pos[1] // 0.5)][int(tmp_pos[0] // 0.5)] == 1 else next_s
                 else:
-                    raise Exception(f"Wrong orientation. {current_orientation}")
+                    raise Exception(f"Wrong orientation. {o}")
             else:
                 raise Exception("Error")
 
@@ -327,14 +325,17 @@ class HyperModel(object):
             act = self.configs['action']
             for i, ori in enumerate([0, np.pi / 2, np.pi, 3 * np.pi / 2]):
                 # compute the location
-                loc = valid_position + [ori]
+                encode_ori = [np.sin(ori), np.cos(ori)]
+                loc = valid_position + encode_ori
 
                 # predict the next state
                 state_tensor = torch.tensor(loc).view(1, -1).float().to(self.device)
                 act_tensor = torch.tensor(act).view(1, -1).float().to(self.device)
 
                 # manually mask the map
-                m, _ = MapProcessor.manual_mask(loc, map_data)
+                map_copy = None
+                m, _ = MapProcessor.manual_mask_ego_motion(loc, map_data)
+                map_copy = m.copy()
                 m = MapProcessor.resize_optim(m, (32, 32))
                 map_tensor = torch.tensor(m).unsqueeze(dim=0).unsqueeze(dim=0).float().to(self.device)
                 # generate the mazes
@@ -343,12 +344,12 @@ class HyperModel(object):
                 pred_next = (state_tensor + pred_next_offset).detach().cpu().numpy()
 
                 # compute the ground truth next state
-                next_state = inner_step_func(loc, act, maze_arr)
+                next_state = inner_step_func(loc, act, maze_arr, ori)
                 positional_err = np.sqrt(np.sum(np.array(next_state)[0:2] - pred_next[0, 0:2])**2)
-                rotational_err = np.sqrt(np.sum(np.array(next_state)[2] - pred_next[0, 2])**2)
-                # if positional_err > 0.5:
-                #     print(f"state = {loc}, act = {action_names[act]}, next state = {next_state}, pred_next = {pred_next},"
-                #           f"P err = {positional_err}, R err = {rotational_err * 180 / np.pi}")
+                rotational_err = np.sqrt(np.sum(np.array(next_state)[2:] - pred_next[0, 2:])**2)
+                if positional_err > 0.25 or rotational_err > 0.25:
+                    print(f"state = {loc}, act = {action_names[act]}, next state = {next_state}, pred_next = {pred_next},"
+                          f"P err = {positional_err}, R err = {rotational_err}")
 
                 heatmap_list[i][r, c] = positional_err + rotational_err
 
@@ -373,11 +374,9 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
-    parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
-                                                          "hyper_model/multi_mazes_7_split_0_ego_global_mask_b64/"
-                                                          "05-06/"
-                                                          "11-39-59_multi_mazes_7_split_0_ego_global_mask_b64_batch_64/"
-                                                          "model")
+    parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
+                                                          "multi_mazes_7_split_0_act3/05-14/"
+                                                          "11-00-33_multi_mazes_7_split_0_act3_batch_64/model")
 
     # evaluation configurations
     parser.add_argument("--seed", type=int, default=0)
@@ -387,7 +386,7 @@ def parse_input():
     parser.add_argument("--device", type=str, default="cuda:0")
 
     # for heat map
-    parser.add_argument("--action", type=int, default=0)
+    parser.add_argument("--action", type=int, default=2)
 
     # for planning having tolerance of model error
     # There is not only one way to do this. Here, we just use a list to track the wall positions
@@ -450,31 +449,42 @@ if __name__ == '__main__':
 
     # plot the heat map
     for idx in DATA_SPLITS[f"split_{eval_configs['split_id'] + 1}"][eval_configs['dataset_type']]:
-        fig, arr = plt.subplots(2, 2)
+        fig, arr = plt.subplots(3, 3, figsize=(12, 12))
         fig.suptitle(f"Action = {actions[input_args.action]}")
         my_map, my_maze, heat_err = myEval.plot_prediction_error_heat_map_ego_motion(idx)
 
-        arr[0, 0].set_title("East")
-        h1 = arr[0, 0].imshow(heat_err[0].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h1, ax=arr[0, 0])
-        arr[0, 0].axis('off')
+        arr[1, 2].set_title("East")
+        h1 = arr[1, 2].imshow(heat_err[0].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
+        plt.colorbar(h1, ax=arr[1, 2])
+        arr[1, 2].axis('off')
 
         arr[0, 1].set_title("North")
         h2 = arr[0, 1].imshow(heat_err[1].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h2, ax=arr[0, 1])
         arr[0, 1].axis('off')
 
+        arr[1, 1].set_title("Map")
+        arr[1, 1].imshow(my_maze)
+        arr[1, 1].axis('off')
+
         arr[1, 0].set_title("West")
         h3 = arr[1, 0].imshow(heat_err[2].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h3, ax=arr[1, 0])
         arr[1, 0].axis('off')
 
-        arr[1, 1].set_title("South")
-        h4 = arr[1, 1].imshow(heat_err[3].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h4, ax=arr[1, 1])
-        arr[1, 1].axis('off')
+        arr[2, 1].set_title("South")
+        h4 = arr[2, 1].imshow(heat_err[3].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
+        plt.colorbar(h4, ax=arr[2, 1])
+        arr[2, 1].axis('off')
 
-        plt.savefig(f"./plots/maze_{input_args.dataset_type}_{input_args.maze_size}_{idx}_{actions[input_args.action]}.png",
+        arr[0, 0].axis('off')
+        arr[0, 2].axis('off')
+        arr[2, 0].axis('off')
+        arr[2, 2].axis('off')
+
+        plt.savefig(f"./plots/maze_{input_args.dataset_type}_{input_args.maze_size}_{idx}_{actions[input_args.action]}_act3.png",
                     dpi=100)
+
+        plt.show()
 
         print(f"Processing maze {idx}")

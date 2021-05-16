@@ -9,10 +9,11 @@ if __name__ == "__main__":
     maze_configurations = {
         'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'state',
+        'obs_name': 'panorama-rgb',
         'max_episode_step': 1000,
         'random_init': False,
-        'random_goal': False
+        'random_goal': False,
+        'action_num': 3
     }
 
     # create the maze from text
@@ -22,7 +23,8 @@ if __name__ == "__main__":
                           obs_name=maze_configurations['obs_name'],
                           max_episode_steps=maze_configurations['max_episode_step'],
                           rnd_init=maze_configurations['random_init'],
-                          rnd_goal=maze_configurations['random_goal'])
+                          rnd_goal=maze_configurations['random_goal'],
+                          action_num=maze_configurations['action_num'])
 
     # reset
     obs = myMaze.reset()
@@ -34,19 +36,10 @@ if __name__ == "__main__":
     for i in range(50):
         # random sample an action from the action space
         act = myMaze.action_space.sample()
-        act = 0
-        # if i == 0:
-        #     act = 1
-        # else:
-        #     act = 2
-        # step
+
         next_obs, reward, done, _ = myMaze.step(act)
 
-        print(f"Current state = {obs['observation']},"
-              f" action = {myMaze.ACTION_NAME[act]},"
-              f" next state = {next_obs['observation']}")
-
-        # print(myMaze.agent.pos)
+        print(myMaze.agent.pos, " - ", myMaze.agent.dir)
 
         obs = next_obs
 

@@ -65,7 +65,7 @@ class RandomPolicy(object):
     def sample_episodes_single(self, configs):
         # sample multiple episodes
         episodes = []
-        action_list = [0, 1, 2, 3]
+        action_list = list(range(self.configs.action_num))
         action_name = ['turn_left', 'turn_right', 'forward', 'backward']
 
         # create the maze and the map
@@ -155,7 +155,8 @@ class RandomPolicy(object):
 
     # save function
     def save_results(self):
-        with open(f'./data/maze_{self.configs.maze_size}x{self.configs.maze_size}_0-{self.configs.maze_num - 1}_rnd.json',
+        with open(f'./data/maze_{self.configs.maze_size}x{self.configs.maze_size}_0-{self.configs.maze_num - 1}'
+                  f'_act{self.configs.action_num}_rnd.json',
                   "w") as f_out:
             json.dump(self.results_data, f_out)
         f_out.close()
@@ -178,7 +179,8 @@ def load_maze(m_id, configs):
         'obs_name': 'state',
         'max_episode_step': configs.max_episode_steps,
         'random_init': True,
-        'random_goal': True
+        'random_goal': True,
+        'action_num': configs.action_num
     }
 
     # create the maze from text
@@ -188,7 +190,8 @@ def load_maze(m_id, configs):
                         obs_name=maze_configurations['obs_name'],
                         max_episode_steps=maze_configurations['max_episode_step'],
                         rnd_init=maze_configurations['random_init'],
-                        rnd_goal=maze_configurations['random_goal'])
+                        rnd_goal=maze_configurations['random_goal'],
+                        action_num=maze_configurations['action_num'])
     return [maze, maze_map]
 
 
@@ -206,6 +209,7 @@ def parse_input():
     parser.add_argument("--maze_size", type=int, default=7)
     parser.add_argument("--room_size", type=int, default=3)
     parser.add_argument("--max_episode_steps", type=int, default=100)
+    parser.add_argument("--action_num", type=int, default=4)
 
     return parser.parse_args()
 
