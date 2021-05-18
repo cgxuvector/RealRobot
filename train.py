@@ -1,4 +1,4 @@
-from experiment.GoalDQNExperiment import GoalDQNExperiment
+from experiment.GoalDQNExperiment import GoalDQNExperiment, HERDQNExperiment
 from agent.GoalDQNAgent import GoalDQNAgent
 
 from env.Maze import GoalTextMaze
@@ -22,7 +22,7 @@ def parse_input_arguments():
     parser.add_argument("--room_size", type=int, default=1)
 
     # arguments for agent
-    parser.add_argument("--dqn_mode", type=str, default="double")
+    parser.add_argument("--dqn_mode", type=str, default="vanilla")
     parser.add_argument("--gamma", type=float, default=0.995)
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--lr", type=float, default=1e-4)
@@ -31,9 +31,9 @@ def parse_input_arguments():
     parser.add_argument("--env_name", type=str, default="test_env")
     parser.add_argument("--use_obs", action="store_true", default=False)
     parser.add_argument("--start_train_step", type=int, default=1000)
-    parser.add_argument("--total_time_steps", type=int, default=2000000)
+    parser.add_argument("--total_time_steps", type=int, default=1000000)
     parser.add_argument("--memory_size", type=int, default=100000)
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--update_policy_freq", type=int, default=4)
     parser.add_argument("--update_target_freq", type=int, default=2000)
     parser.add_argument("--eval_policy_freq", type=int, default=1000)
@@ -137,5 +137,9 @@ if __name__ == "__main__":
     envs = make_envs()
 
     # make the experiment runner
-    myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
+    if args.use_her:
+        myExperiment = HERDQNExperiment(myAgent, envs[0], envs[1], training_params)
+    else:
+        myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
+
     myExperiment.run()

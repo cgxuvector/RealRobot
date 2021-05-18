@@ -18,6 +18,7 @@ from gym_miniworld.entity import *
 from gym_miniworld.opengl import *
 import matplotlib.pyplot as plt
 from skimage.transform import resize
+import json
 
 import IPython.terminal.debugger as Debug
 
@@ -47,6 +48,7 @@ class GoalTextMaze(MiniWorldEnv):
         obs_name="rgb",
         rnd_init=False,
         rnd_goal=False,
+        dist=0,
         action_num=4,
         goal_reach_eps=1e-3,  # values indicates the goal is reached.
         **kwargs
@@ -71,6 +73,7 @@ class GoalTextMaze(MiniWorldEnv):
         assert text_file is not None, "No text file is provided."
         # load the map and valid locations (i.e., empty corridor cells)
         self.array_map, self.valid_locations = self._load_txt(text_file)
+        self.dist_dict = self._load_dist_dict(text_file)
         # note, in miniworld, there is no out-layer walls
         assert self.array_map.shape[0] > 2 and self.array_map.shape[1] > 2, \
             print(f"The maze size should be bigger than 2 x 2")
@@ -100,6 +103,7 @@ class GoalTextMaze(MiniWorldEnv):
         # customize start and goal locations
         self.rnd_init = rnd_init  # whether randomize the start location
         self.rnd_goal = rnd_goal  # whether randomize the goal location
+        self.dist = dist  # distance for the randomize the start goal locations
         self.start_info = {}  # start information
         self.goal_info = {}  # goal information
         self.reach_goal_eps = goal_reach_eps  # epsilon as the goal reaching threshold
@@ -354,6 +358,22 @@ class GoalTextMaze(MiniWorldEnv):
 
         return map_array, map_valid_locations
 
+    @staticmethod
+    def _load_dist_dict(f_path):
+        f_path = f'./env/mazes/dist_data/{f_path.split("/")[-1].split(".")[0]}.json'
+        with open(f_path, 'r') as f_in:
+            data = json.load(f_in)
+        f_in.close()
+
+        return data
+
+    # sample start goal positions
+    def _sample_start_goal_dist(self):
+        start, goal = random.sample(self.dist_dict[str(self.dist)], 1)[0]
+        start = [start[0] - 1, start[1] - 1]
+        goal = [goal[0] - 1, goal[1] - 1]
+        return start, goal
+
     def _gen_world(self):
         """ Generate the maze """
         # customize this function to generate all the rooms
@@ -426,9 +446,14 @@ class GoalTextMaze(MiniWorldEnv):
 
         # place the agent and the goal
         if self.rnd_init and self.rnd_goal:  # both random start and goal
-            room_candidates = random.sample(self.valid_locations, 2)
-            agent_room_loc = room_candidates[0]
-            goal_room_loc = room_candidates[1]
+            if not self.dist:
+                room_candidates = random.sample(self.valid_locations, 2)
+                agent_room_loc = room_candidates[0]
+                goal_room_loc = room_candidates[1]
+            else:
+                room_candidates = self._sample_start_goal_dist()
+                agent_room_loc = room_candidates[0]
+                goal_room_loc = room_candidates[1]
         elif self.rnd_init and not self.rnd_goal:  # random start and fixed goal
             location_copy = cp.copy(self.valid_locations)
             location_copy.pop(-1)  # pop the goal location
@@ -444,7 +469,7 @@ class GoalTextMaze(MiniWorldEnv):
             goal_room_loc = self.valid_locations[-1]
 
         # place the agent randomly
-        # print(f"Agent is spawned in room {agent_room_loc}")
+        print(f"Agent is spawned in room {agent_room_loc}")
         start_room = rows[agent_room_loc[0]][agent_room_loc[1]]
         self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
         self.start_info['pos'] = self.agent.pos
@@ -452,7 +477,7 @@ class GoalTextMaze(MiniWorldEnv):
         self.start_info['room'] = start_room
 
         # place the goal randomly
-        # print(f"Goal is spawned in room {goal_room_loc}")
+        print(f"Goal is spawned in room {goal_room_loc}")
         goal_room = rows[goal_room_loc[0]][goal_room_loc[1]]
         # initialize the goal at the center of the room
         self.goal_info['pos'] = np.array([goal_room.mid_x, 0, goal_room.mid_z])
