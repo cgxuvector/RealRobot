@@ -1,6 +1,6 @@
 from utils.Schedule import LinearSchedule
 from utils.ExperienceReplay import GoalDQNReplayBuffer
-from utils.ExperienceReplay import SampleFuncReplayBuffer
+from utils.ExperienceReplay import SampleFuncReplayBuffer, SampleFuncReplayBufferImages
 from utils.SamplerFunc import HER
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
@@ -242,9 +242,15 @@ class HERDQNExperiment(object):
                                 replay_k=4,
                                 reward_func=self.compute_reward)
         # define the memory buffer
-        self.memory = SampleFuncReplayBuffer(env_params=self.env_params,
-                                             size_in_transitions=trn_params['memory_size'],
-                                             sample_func=self.sampler_func.sample_transitions)
+        if not trn_params['use_obs']:
+            self.memory = SampleFuncReplayBuffer(env_params=self.env_params,
+                                                 size_in_transitions=trn_params['memory_size'],
+                                                 sample_func=self.sampler_func.sample_transitions)
+        else:
+            self.memory = SampleFuncReplayBufferImages(env_params=self.env_params,
+                                                       size_in_transitions=trn_params['memory_size'],
+                                                       sample_func=self.sampler_func.sample_transitions_images)
+
         self.start_train_step = trn_params['start_train_step']
         self.total_time_steps = trn_params['total_time_steps']
         self.update_policy_freq = trn_params['update_policy_freq']
@@ -301,11 +307,12 @@ class HERDQNExperiment(object):
         # number of the evaluation
         eval_total_num = 100
         success_num = 0.0
+        optimal_steps = 10
         # start evaluation
         for i in range(eval_total_num):
             # reset the environment
             obs = self.reset()
-            for t in range(self.test_env.max_episode_steps):
+            for t in range(optimal_steps):
                 # get action
                 self.agent.eps = 0
                 action = self.get_action(obs)
@@ -334,7 +341,11 @@ class HERDQNExperiment(object):
 
     def compute_reward(self, achieved_goal, desired_goal):
         # reward function to compute the reward for the sampled batch using HER
-        distances = np.sum((achieved_goal - desired_goal) ** 2, axis=1)
+        if not self.use_obs:
+            distances = np.sum((achieved_goal - desired_goal) ** 2, axis=1)
+        else:
+            distances = np.sum((achieved_goal - desired_goal) ** 2, axis=(1, 2, 3))
+
         # compute the termination
         dones = distances > 0
         if self.trn_params['sparse_reward'] == 0:
@@ -376,8 +387,8 @@ class HERDQNExperiment(object):
         obs = self.env.reset()
 
         # position info for debug print
-        start_pos = obs['observation']
-        goal_pos = obs['desired_goal']
+        start_pos = self.env.start_info['pos']
+        goal_pos = self.env.goal_info['pos']
 
         # variables for rollout episodes
         ep_obs, ep_ag, ep_dg, ep_act = [], [], [], []
@@ -402,7 +413,6 @@ class HERDQNExperiment(object):
             rewards.append(reward)
 
             # check termination
-            # if done or episode_t == self.env.max_step:
             if not np.mod(episode_t + 1, self.env.max_episode_steps):
                 # compute the return
                 G = 0
@@ -451,8 +461,8 @@ class HERDQNExperiment(object):
                 ep_obs.append(obs['observation'].copy())
                 ep_ag.append(obs['achieved_goal'].copy())
                 goal_obs = obs['desired_goal']
-                start_pos = obs['observation']
-                goal_pos = obs['desired_goal']
+                start_pos = self.env.start_info['pos']
+                goal_pos = self.env.goal_info['pos']
             else:
                 # increment
                 obs = next_obs

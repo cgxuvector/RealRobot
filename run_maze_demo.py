@@ -1,4 +1,5 @@
 from env.Maze import GoalTextMaze
+import random
 
 import matplotlib.pyplot as plt
 
@@ -7,15 +8,18 @@ import IPython.terminal.debugger as Debug
 if __name__ == "__main__":
     # test code
     maze_configurations = {
-        'room_size': 1,  # room size
+        'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'panorama-rgb',
+        'obs_name': 'state',
         'max_episode_step': 1000,
-        'random_init': True,
-        'random_goal': True,
+        'random_init': False,
+        'random_goal': False,
         'action_num': 4,
-        'dist': 2
+        'dist': 0,
+        'rnd_spawn': True,
     }
+
+    random.seed(4312)
 
     # create the maze from text
     myMaze = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
@@ -26,6 +30,7 @@ if __name__ == "__main__":
                           rnd_init=maze_configurations['random_init'],
                           rnd_goal=maze_configurations['random_goal'],
                           dist=maze_configurations['dist'],
+                          rnd_spawn=maze_configurations['rnd_spawn'],
                           action_num=maze_configurations['action_num'])
 
     # reset
@@ -46,6 +51,8 @@ if __name__ == "__main__":
         obs = next_obs
 
         myMaze.render()
+
+        Debug.set_trace()
         if done:
             myMaze.reset()
 

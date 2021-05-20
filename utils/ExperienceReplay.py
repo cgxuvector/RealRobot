@@ -277,6 +277,110 @@ class SampleFuncReplayBuffer(object):
         return transitions
 
 
+""" HER for images as observations
+
+"""
+
+
+class SampleFuncReplayBufferImages(object):
+    # init the buffer
+    def __init__(self, env_params, size_in_transitions, sample_func):
+        # environment parameters
+        self.env_params = env_params
+        self.T = env_params['max_episode_step']
+
+        # memory management
+        self.size_in_transitions = size_in_transitions  # size of the buffer in transitions
+        self.size_in_episodes = size_in_transitions // self.T  # size of the buffer in episodes
+
+        self.stored_episode_num = 0  # current stored episodes
+        self.stored_transitions_num = 0  # current stored transitions
+
+        # obtain the shape of the observation (obs), achieved_goal (ag), desired_goal (dg), and action (act)
+        # please note, in this implementation, the value in "obs" is the same as "ag"
+        obs_shape = np.array(env_params['obs']).shape
+        ag_shape = np.array(env_params['ag']).shape
+        dg_shape = np.array(env_params['dg']).shape
+        act_shape = np.array(env_params['act']).shape
+        # buffer for episodes: size_in_episodes x (T or T + 1) x shape of the data
+        # (T + 1) is because we store o_0 to o_T-1 + o_T
+        self.buffers = {
+            'obs': np.empty([self.size_in_episodes, self.T + 1, *obs_shape], dtype=np.float32),
+            'ag': np.empty([self.size_in_episodes, self.T + 1, *ag_shape], dtype=np.float32),
+            'dg': np.empty([self.size_in_episodes, self.T, *dg_shape], dtype=np.float32),
+            'act': np.empty([self.size_in_episodes, self.T, *act_shape], dtype=np.int32)
+        }  # data storage
+
+        # sampler function
+        self.sample_func = sample_func
+
+    # get the size of the buffer, by default, we return the number of episodes
+    def __len__(self):
+        # with self.lock:
+        return self.stored_episode_num
+
+    # get the storage indices
+    def _get_storage_idx(self, inc=None):
+        size_inc = inc or 1  # size increment in terms of number of episodes
+        assert size_inc <= self.size_in_episodes, "The batch size is too big!"
+
+        # compute the indices for the available storage
+        if self.stored_episode_num + size_inc <= self.size_in_episodes:  # there is enough room to add new data
+            indices = np.arange(self.stored_episode_num, self.stored_episode_num + size_inc)
+        elif self.stored_episode_num < self.size_in_episodes:  # the memory is not full but no room for all new data
+            overflow_num = size_inc - (self.size_in_episodes - self.stored_episode_num)  # compute the overflow
+            indices_a = np.arange(self.stored_episode_num, self.size_in_episodes)  # sequential storage
+            indices_b = np.random.randint(0, self.stored_episode_num, overflow_num)  # random overwrite old episodes
+            indices = np.concatenate([indices_a, indices_b])  # concatenate the indices
+        else:
+            indices = np.random.randint(0, self.stored_episode_num, size_inc)
+
+        # update memory size
+        self.stored_episode_num = np.min([self.size_in_episodes, self.stored_episode_num + size_inc])
+
+        # return the indices
+        if size_inc == 1:
+            indices = indices.tolist()
+
+        # note: the return should be list of indices for storage
+        return indices
+
+    # store the data
+    def store_episode(self, episode_batch):  # size: batch x T or T+1 x shape of the data
+        # split the data. Note, mb is an abbreviation of multi-batch for multi-threads data collection
+        mb_obs, mb_ag, mb_dg, mb_act = episode_batch
+        # get the batch size
+        batch_size = mb_obs.shape[0]
+
+        # with self.lock:
+        # get the available indices (empty or need to be rewritten) to store the data
+        indices = self._get_storage_idx(batch_size)
+
+        # store the data using the indices: an interesting implementation of circle buffer
+        self.buffers['obs'][indices] = mb_obs
+        self.buffers['ag'][indices] = mb_ag
+        self.buffers['dg'][indices] = mb_dg
+        self.buffers['act'][indices] = mb_act
+
+        # increase the transition counter
+        self.stored_transitions_num += batch_size * self.T
+        self.stored_transitions_num = np.min([self.size_in_transitions, self.stored_transitions_num])
+
+    # sample a batch data
+    def sample(self, batch_size):
+        temp_buffers = {}  # a temporal memory buffer to avoid changing the raw one
+        # with self.lock:
+        for key in self.buffers.keys():
+            temp_buffers[key] = self.buffers[key][:self.stored_episode_num]
+
+        temp_buffers['obs_next'] = temp_buffers['obs'][:, 1:, :, :, :, :]  # add next observation
+        temp_buffers['ag_next'] = temp_buffers['ag'][:, 1:, :, :, :, :]  # add next achieved goal
+
+        # sample the transitions
+        transitions = self.sample_func(temp_buffers, batch_size)
+
+        return transitions
+
 
 
 

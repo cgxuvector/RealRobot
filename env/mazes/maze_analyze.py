@@ -49,7 +49,7 @@ def save(res, m_size, m_id):
 if __name__ == "__main__":
 
     for i in range(20):
-        maze_size = 7
+        maze_size = 21
         maze_id = i
 
         maze_map = load_maze(maze_size, maze_id)

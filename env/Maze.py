@@ -49,6 +49,7 @@ class GoalTextMaze(MiniWorldEnv):
         rnd_init=False,
         rnd_goal=False,
         dist=0,
+        rnd_spawn=False,  # if True, the agent will be randomly spawn in a room
         action_num=4,
         goal_reach_eps=1e-3,  # values indicates the goal is reached.
         **kwargs
@@ -74,6 +75,7 @@ class GoalTextMaze(MiniWorldEnv):
         # load the map and valid locations (i.e., empty corridor cells)
         self.array_map, self.valid_locations = self._load_txt(text_file)
         self.dist_dict = self._load_dist_dict(text_file)
+
         # note, in miniworld, there is no out-layer walls
         assert self.array_map.shape[0] > 2 and self.array_map.shape[1] > 2, \
             print(f"The maze size should be bigger than 2 x 2")
@@ -104,6 +106,7 @@ class GoalTextMaze(MiniWorldEnv):
         self.rnd_init = rnd_init  # whether randomize the start location
         self.rnd_goal = rnd_goal  # whether randomize the goal location
         self.dist = dist  # distance for the randomize the start goal locations
+        self.rnd_spawn = rnd_spawn  # whether spawn the agent at the center of the room.
         self.start_info = {}  # start information
         self.goal_info = {}  # goal information
         self.reach_goal_eps = goal_reach_eps  # epsilon as the goal reaching threshold
@@ -294,7 +297,7 @@ class GoalTextMaze(MiniWorldEnv):
                 self.render_arrays[1, 2].set_title("R")
                 self.render_artists.append(self.render_arrays[1, 2].imshow(obs[0]))
                 self.render_arrays[1, 1].set_title("Top down")
-                self.render_artists.append(self.render_arrays[1, 1].imshow(top_obs))
+                self.render_artists.append(self.render_arrays[1, 1].imshow(top_obs, aspect='auto'))
                 self.render_init_marker = False
             else:
                 top_obs = self.render_top_view()
@@ -304,7 +307,7 @@ class GoalTextMaze(MiniWorldEnv):
                 self.render_artists[3].set_data(obs[3])
                 self.render_artists[4].set_data(top_obs)
         self.render_fig.canvas.draw()
-        plt.pause(1)
+        plt.pause(0.01)
 
     """ Auxiliary functions
     """
@@ -469,15 +472,16 @@ class GoalTextMaze(MiniWorldEnv):
             goal_room_loc = self.valid_locations[-1]
 
         # place the agent randomly
-        print(f"Agent is spawned in room {agent_room_loc}")
+        # print(f"Agent is spawned in room {agent_room_loc}")
         start_room = rows[agent_room_loc[0]][agent_room_loc[1]]
+
         self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
         self.start_info['pos'] = self.agent.pos
         self.start_info['ori'] = self.agent.dir
         self.start_info['room'] = start_room
 
         # place the goal randomly
-        print(f"Goal is spawned in room {goal_room_loc}")
+        # print(f"Goal is spawned in room {goal_room_loc}")
         goal_room = rows[goal_room_loc[0]][goal_room_loc[1]]
         # initialize the goal at the center of the room
         self.goal_info['pos'] = np.array([goal_room.mid_x, 0, goal_room.mid_z])

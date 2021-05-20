@@ -17,8 +17,9 @@ def parse_input_arguments():
     parser.add_argument("--panorama_mode", type=str, default='concat')
     parser.add_argument("--random_init", action="store_true", default=False)
     parser.add_argument("--random_goal", action="store_true", default=False)
-    parser.add_argument("--reach_goal_eps", type=float, default=0.5)
-    parser.add_argument("--max_episode_steps", type=int, default=500)
+    parser.add_argument("--sample_dist", type=int, default=0)
+    parser.add_argument("--reach_goal_eps", type=float, default=0.45)
+    parser.add_argument("--max_episode_steps", type=int, default=100)
     parser.add_argument("--room_size", type=int, default=1)
 
     # arguments for agent
@@ -29,7 +30,6 @@ def parse_input_arguments():
 
     # arguments for training
     parser.add_argument("--env_name", type=str, default="test_env")
-    parser.add_argument("--use_obs", action="store_true", default=False)
     parser.add_argument("--start_train_step", type=int, default=1000)
     parser.add_argument("--total_time_steps", type=int, default=1000000)
     parser.add_argument("--memory_size", type=int, default=100000)
@@ -63,12 +63,13 @@ env_params = {
     'max_episode_steps': args.max_episode_steps,
     'room_size': args.room_size,
 
-    'action_num': args.action_num
+    'action_num': args.action_num,
+    'sample_dist': args.sample_dist
 }
 
 agent_params = {
     'dqn_mode': args.dqn_mode,
-    'use_obs': args.use_obs,
+    'use_obs': True if args.observation != "state" else False,
     'gamma': args.gamma,
     'device': args.device,
     'lr': args.lr,
@@ -78,7 +79,7 @@ training_params = {
     # for environment
     'env_name': args.env_name,
     # for observation
-    'use_obs': args.use_obs,
+    'use_obs': True if args.observation != "state" else False,
     # for training details
     'start_train_step': args.start_train_step,
     'total_time_steps': args.total_time_steps,
@@ -105,7 +106,7 @@ def make_agent():
 
 def make_envs():
     # create the training environment
-    trn_env = GoalTextMaze(text_file='env/mazes/maze_test.txt',
+    trn_env = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
                            room_size=env_params['room_size'],  # room size
                            wall_size=0.01,
                            max_episode_steps=env_params['max_episode_steps'],  # step size
@@ -113,16 +114,18 @@ def make_envs():
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
                            goal_reach_eps=env_params['goal_reach_eps'],
+                           dist=env_params['sample_dist'],
                            action_num=env_params['action_num'])  # stop epsilon
 
     # creat the testing environment
-    tst_env = GoalTextMaze(text_file='env/mazes/maze_test.txt',
+    tst_env = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
                            room_size=env_params['room_size'],
                            wall_size=0.01,
                            max_episode_steps=env_params['max_episode_steps'],
                            obs_name=env_params['obs_name'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
+                           dist=env_params['sample_dist'],
                            goal_reach_eps=env_params['goal_reach_eps'],
                            action_num=env_params['action_num'])
 
