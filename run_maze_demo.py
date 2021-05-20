@@ -10,10 +10,10 @@ if __name__ == "__main__":
     maze_configurations = {
         'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'state',
-        'max_episode_step': 1000,
-        'random_init': False,
-        'random_goal': False,
+        'obs_name': 'panorama-rgb',
+        'max_episode_step': 100,
+        'random_init': True,
+        'random_goal': True,
         'action_num': 4,
         'dist': 0,
         'rnd_spawn': True,
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     print(f"Start pos = {myMaze.start_info['pos']}, goal pos = {myMaze.goal_info['pos']}")
 
     # start test
-    for i in range(50):
+    for i in range(10000):
         # random sample an action from the action space
         act = myMaze.action_space.sample()
 
@@ -51,8 +51,6 @@ if __name__ == "__main__":
         obs = next_obs
 
         myMaze.render()
-
-        Debug.set_trace()
         if done:
             myMaze.reset()
 

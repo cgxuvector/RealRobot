@@ -474,8 +474,12 @@ class GoalTextMaze(MiniWorldEnv):
         # place the agent randomly
         # print(f"Agent is spawned in room {agent_room_loc}")
         start_room = rows[agent_room_loc[0]][agent_room_loc[1]]
-
-        self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+        if self.rnd_spawn:  # spawn the agent randomly in a room
+            sample_x = random.uniform(start_room.min_x, start_room.max_x)
+            sample_z = random.uniform(start_room.min_z, start_room.max_z)
+            self._place_agent(room=start_room, pos=np.array([sample_x, 0, sample_z]))
+        else:  # spawn the agent in at the room center
+            self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
         self.start_info['pos'] = self.agent.pos
         self.start_info['ori'] = self.agent.dir
         self.start_info['room'] = start_room
