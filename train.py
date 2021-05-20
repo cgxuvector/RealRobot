@@ -17,6 +17,7 @@ def parse_input_arguments():
     parser.add_argument("--panorama_mode", type=str, default='concat')
     parser.add_argument("--random_init", action="store_true", default=False)
     parser.add_argument("--random_goal", action="store_true", default=False)
+    parser.add_argument("--random_spawn", action="store_true", default=False)
     parser.add_argument("--sample_dist", type=int, default=0)
     parser.add_argument("--reach_goal_eps", type=float, default=0.45)
     parser.add_argument("--max_episode_steps", type=int, default=100)
@@ -59,6 +60,7 @@ env_params = {
     'panorama_mode': args.panorama_mode,
     'random_init': args.random_init,
     'random_goal': args.random_goal,
+    'random_spawn': args.random_spawn,
     'goal_reach_eps': args.reach_goal_eps,
     'max_episode_steps': args.max_episode_steps,
     'room_size': args.room_size,
@@ -113,6 +115,7 @@ def make_envs():
                            obs_name=env_params['obs_name'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
+                           rnd_spawn=env_params['random_spawn'],
                            goal_reach_eps=env_params['goal_reach_eps'],
                            dist=env_params['sample_dist'],
                            action_num=env_params['action_num'])  # stop epsilon
@@ -125,6 +128,7 @@ def make_envs():
                            obs_name=env_params['obs_name'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
+                           rnd_spawn=env_params['random_spawn'],
                            dist=env_params['sample_dist'],
                            goal_reach_eps=env_params['goal_reach_eps'],
                            action_num=env_params['action_num'])
