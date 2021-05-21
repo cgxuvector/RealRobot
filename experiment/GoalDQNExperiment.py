@@ -279,7 +279,8 @@ class HERDQNExperiment(object):
 
         # create the summary writer
         self.tb = SummaryWriter(log_dir=target_log_dir,
-                                comment=f"_label={self.trn_params['run_label']}_{self.trn_params['env_name'].split('.')[0]}")
+                                comment=f"_label={self.trn_params['run_label']}_"
+                                        f"{self.trn_params['env_name'].split('.')[0]}")
 
     # get the parameters of the environment
     def _get_env_params(self):
@@ -454,7 +455,7 @@ class HERDQNExperiment(object):
                 G_res = np.mean(self.trn_returns[-10:]) if self.trn_returns else 0
                 self.tb.add_scalar("Expected return", G_res, episode_idx)
                 self.tb.add_scalar("Mean success rate", eval_res, episode_idx)
-                self.tb.add_scalar("TD loss", self.agent.train_loss[-1] if not len(self.agent.train_loss) else 0)
+                self.tb.add_scalar("TD loss", self.agent.train_loss[-1] if not len(self.agent.train_loss) else 0, episode_idx)
 
                 # store the episode into batch buffer
                 mb_obs = np.array([ep_obs])
