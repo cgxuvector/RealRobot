@@ -421,7 +421,7 @@ class HERDQNExperiment(object):
 
             # check termination
             if not np.mod(episode_t + 1, self.env.max_episode_steps):
-                Debug.set_trace()
+
                 # compute the return
                 G = 0
                 for r in reversed(rewards):
