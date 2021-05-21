@@ -262,6 +262,7 @@ class HERDQNExperiment(object):
         self.use_her = trn_params['use_her']  # whether use her
 
         # save results
+        self.trn_loss = []
         self.trn_returns = []
         self.eval_success = []
         self.save_dir = trn_params['save_dir']
@@ -421,7 +422,6 @@ class HERDQNExperiment(object):
 
             # check termination
             if not np.mod(episode_t + 1, self.env.max_episode_steps):
-                Debug.set_trace()
                 # compute the return
                 G = 0
                 for r in reversed(rewards):
@@ -454,6 +454,7 @@ class HERDQNExperiment(object):
                 G_res = np.mean(self.trn_returns[-10:]) if self.trn_returns else 0
                 self.tb.add_scalar("Expected return", G_res, episode_idx)
                 self.tb.add_scalar("Mean success rate", eval_res, episode_idx)
+                self.tb.add_scalar("TD loss", self.agent.train_loss[-1] if not len(self.agent.train_loss) else 0)
 
                 # store the episode into batch buffer
                 mb_obs = np.array([ep_obs])

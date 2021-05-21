@@ -334,8 +334,9 @@ class HyperModel(object):
 
                 # manually mask the map
                 map_copy = None
-                m, _ = MapProcessor.manual_mask_ego_motion(loc, map_data)
+                _, m = MapProcessor.manual_mask_ego_motion(loc, map_data)
                 map_copy = m.copy()
+
                 m = MapProcessor.resize_optim(m, (32, 32))
                 map_tensor = torch.tensor(m).unsqueeze(dim=0).unsqueeze(dim=0).float().to(self.device)
                 # generate the mazes
@@ -366,7 +367,7 @@ def parse_input():
 
     # environment to evaluate
     # maze size
-    parser.add_argument("--maze_size", type=int, default=7)
+    parser.add_argument("--maze_size", type=int, default=21)
     # maze id
     parser.add_argument("--maze_id", type=int, default=0)
     # maximal episode steps
@@ -374,19 +375,21 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
-    parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
-                                                          "multi_mazes_7_split_0_act3/05-14/"
-                                                          "11-00-33_multi_mazes_7_split_0_act3_batch_64/model")
+    parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
+                                                          "from_panzer/model_results/"
+                                                          "multi_maze_7_split_0_local_mask_ego_4/05-14/"
+                                                          "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64"
+                                                          "/model")
 
     # evaluation configurations
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--dataset_type", type=str, default="tst")
+    parser.add_argument("--dataset_type", type=str, default="trn")
     parser.add_argument("--map_feature", type=str, default="conv2d")
     parser.add_argument("--eval_episode_num", type=int, default=40)
     parser.add_argument("--device", type=str, default="cuda:0")
 
     # for heat map
-    parser.add_argument("--action", type=int, default=2)
+    parser.add_argument("--action", type=int, default=3)
 
     # for planning having tolerance of model error
     # There is not only one way to do this. Here, we just use a list to track the wall positions
@@ -394,7 +397,7 @@ def parse_input():
     parser.add_argument("--use_model_error_tolerated_planner", action="store_true", default=False)
 
     # for using manual mask
-    parser.add_argument("--map_mask_type", type=str, default="manual_global_mask")
+    parser.add_argument("--map_mask_type", type=str, default="manual_local_mask")
 
     # map filter path
     parser.add_argument("--map_filter_path", type=str, default=None)
@@ -481,10 +484,12 @@ if __name__ == '__main__':
         arr[0, 2].axis('off')
         arr[2, 0].axis('off')
         arr[2, 2].axis('off')
-
-        plt.savefig(f"./plots/maze_{input_args.dataset_type}_{input_args.maze_size}_{idx}_{actions[input_args.action]}_act3.png",
-                    dpi=100)
+        #
+        # plt.savefig(f"./plots/maze_local_{input_args.dataset_type}_{input_args.maze_size}_{idx}_{actions[input_args.action]}.png",
+        #             dpi=100)
 
         plt.show()
+
+        break
 
         print(f"Processing maze {idx}")
