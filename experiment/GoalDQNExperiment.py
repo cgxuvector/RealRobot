@@ -416,14 +416,8 @@ class HERDQNExperiment(object):
             ep_ag.append(next_obs['achieved_goal'].copy())  # list of achieved observation T
             ep_dg.append(goal_obs)  # list of goal observation T, goal is a tuple no need for copy
             ep_act.append([action].copy())  # list of actions T - 1
-
-            # reward
-            if len(rewards) == 0:
-                rewards.append(reward)
-            elif rewards[-1] != 0:
-                rewards.append(reward)
-            else:
-                pass
+            rewards.append(reward)
+            
 
             # check termination
             if not np.mod(episode_t + 1, self.env.max_episode_steps):
