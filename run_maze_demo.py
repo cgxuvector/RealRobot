@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 
 import IPython.terminal.debugger as Debug
 
+# todo: the window should be changed to 60x60. however, for real robot, change back to 60x80
+
 if __name__ == "__main__":
     # test code
     maze_configurations = {
@@ -36,20 +38,13 @@ if __name__ == "__main__":
     # reset
     obs = myMaze.reset()
     myMaze.render()
-
     print(f"Start pos = {myMaze.start_info['pos']}, goal pos = {myMaze.goal_info['pos']}")
-
     # start test
-    for i in range(10000):
+    for i in range(100):
         # random sample an action from the action space
         act = myMaze.action_space.sample()
-
         next_obs, reward, done, _ = myMaze.step(act)
-
-        print(myMaze.agent.pos, " - ", myMaze.agent.dir)
-
         obs = next_obs
-
         myMaze.render()
         if done:
             myMaze.reset()

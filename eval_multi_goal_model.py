@@ -348,7 +348,7 @@ class HyperModel(object):
                 next_state = inner_step_func(loc, act, maze_arr, ori)
                 positional_err = np.sqrt(np.sum(np.array(next_state)[0:2] - pred_next[0, 0:2])**2)
                 rotational_err = np.sqrt(np.sum(np.array(next_state)[2:] - pred_next[0, 2:])**2)
-                if positional_err > 0.25 or rotational_err > 0.25:
+                if positional_err > 0.25 or rotational_err > 0.01:
                     print(f"state = {loc}, act = {action_names[act]}, next state = {next_state}, pred_next = {pred_next},"
                           f"P err = {positional_err}, R err = {rotational_err}")
 
@@ -375,21 +375,28 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
+    # # local map trained on 21x21
+    # parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
+    #                                                       "multi_maze_21_split_0_local_mask_ego_4/"
+    #                                                       "05-20/"
+    #                                                       "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
+    #                                                       "model")
+    # # local map trained on 7x7
     parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
                                                           "from_panzer/model_results/"
                                                           "multi_maze_7_split_0_local_mask_ego_4/05-14/"
-                                                          "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64"
-                                                          "/model")
+                                                          "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64/"
+                                                          "model")
 
     # evaluation configurations
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--dataset_type", type=str, default="trn")
+    parser.add_argument("--dataset_type", type=str, default="tst")
     parser.add_argument("--map_feature", type=str, default="conv2d")
     parser.add_argument("--eval_episode_num", type=int, default=40)
     parser.add_argument("--device", type=str, default="cuda:0")
 
     # for heat map
-    parser.add_argument("--action", type=int, default=3)
+    parser.add_argument("--action", type=int, default=2)
 
     # for planning having tolerance of model error
     # There is not only one way to do this. Here, we just use a list to track the wall positions
@@ -453,29 +460,29 @@ if __name__ == '__main__':
     # plot the heat map
     for idx in DATA_SPLITS[f"split_{eval_configs['split_id'] + 1}"][eval_configs['dataset_type']]:
         fig, arr = plt.subplots(3, 3, figsize=(12, 12))
-        fig.suptitle(f"Action = {actions[input_args.action]}")
+        fig.suptitle(f"Maze size {eval_configs['maze_size']} x {eval_configs['maze_size']}: Action = {actions[input_args.action]}", fontsize=25)
         my_map, my_maze, heat_err = myEval.plot_prediction_error_heat_map_ego_motion(idx)
 
-        arr[1, 2].set_title("East")
+        arr[1, 2].set_title("East", fontsize=20)
         h1 = arr[1, 2].imshow(heat_err[0].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h1, ax=arr[1, 2])
         arr[1, 2].axis('off')
 
-        arr[0, 1].set_title("North")
+        arr[0, 1].set_title("North", fontsize=20)
         h2 = arr[0, 1].imshow(heat_err[1].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h2, ax=arr[0, 1])
         arr[0, 1].axis('off')
 
-        arr[1, 1].set_title("Map")
+        arr[1, 1].set_title("Map", fontsize=20)
         arr[1, 1].imshow(my_maze)
         arr[1, 1].axis('off')
 
-        arr[1, 0].set_title("West")
+        arr[1, 0].set_title("West", fontsize=20)
         h3 = arr[1, 0].imshow(heat_err[2].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h3, ax=arr[1, 0])
         arr[1, 0].axis('off')
 
-        arr[2, 1].set_title("South")
+        arr[2, 1].set_title("South", fontsize=20)
         h4 = arr[2, 1].imshow(heat_err[3].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
         plt.colorbar(h4, ax=arr[2, 1])
         arr[2, 1].axis('off')

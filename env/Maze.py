@@ -193,7 +193,13 @@ class GoalTextMaze(MiniWorldEnv):
         # reset the agent to the start room
         start_room = self.start_info['room']
         # retrieve the observation
-        self._place_agent(start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+        if self.rnd_spawn:  # spawn the agent randomly in a room
+            sample_x = random.uniform(start_room.min_x + 0.5, start_room.max_x - 0.5)
+            sample_z = random.uniform(start_room.min_z + 0.5, start_room.max_z - 0.5)
+            self._place_agent(room=start_room, pos=np.array([sample_x, 0, sample_z]))
+            self.start_info['pos'] = self.agent.pos
+        else:
+            self._place_agent(start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
         obs = self._render_customize_obs()
 
         # construct the goal-rl observation
@@ -307,7 +313,7 @@ class GoalTextMaze(MiniWorldEnv):
                 self.render_artists[3].set_data(obs[3])
                 self.render_artists[4].set_data(top_obs)
         self.render_fig.canvas.draw()
-        plt.pause(0.01)
+        plt.pause(0.5)
 
     """ Auxiliary functions
     """
@@ -474,12 +480,9 @@ class GoalTextMaze(MiniWorldEnv):
         # place the agent randomly
         # print(f"Agent is spawned in room {agent_room_loc}")
         start_room = rows[agent_room_loc[0]][agent_room_loc[1]]
-        if self.rnd_spawn:  # spawn the agent randomly in a room
-            sample_x = random.uniform(start_room.min_x, start_room.max_x)
-            sample_z = random.uniform(start_room.min_z, start_room.max_z)
-            self._place_agent(room=start_room, pos=np.array([sample_x, 0, sample_z]))
-        else:  # spawn the agent in at the room center
-            self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+        # spawn the agent in at the room center
+        self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+
         self.start_info['pos'] = self.agent.pos
         self.start_info['ori'] = self.agent.dir
         self.start_info['room'] = start_room
@@ -517,7 +520,7 @@ class GoalTextMaze(MiniWorldEnv):
             obs = []
             current_dir = cp.copy(self.agent.dir)
             for i in range(4):
-                select_dir = current_dir + 90 * i * np.pi / 180
+                select_dir = current_dir + i * np.pi / 2
                 tmp_obs = self._render_dir_obs(radian_dir=select_dir)
                 tmp_obs = resize(tmp_obs, (32, 32))
                 obs.append(tmp_obs)
