@@ -37,6 +37,7 @@ if __name__ == "__main__":
 
     # reset
     obs = myMaze.reset()
+    myMaze.plot_panorama_point_cloud()
     myMaze.render()
     print(f"Start pos = {myMaze.start_info['pos']}, goal pos = {myMaze.goal_info['pos']}")
     # start test
@@ -46,6 +47,7 @@ if __name__ == "__main__":
         act = 2
         next_obs, reward, done, _ = myMaze.step(act)
         obs = next_obs
+        myMaze.plot_panorama_point_cloud()
         myMaze.render()
         if done:
             myMaze.reset()
