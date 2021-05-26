@@ -367,7 +367,7 @@ def parse_input():
 
     # environment to evaluate
     # maze size
-    parser.add_argument("--maze_size", type=int, default=21)
+    parser.add_argument("--maze_size", type=int, default=9)
     # maze id
     parser.add_argument("--maze_id", type=int, default=0)
     # maximal episode steps
@@ -375,18 +375,18 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
-    # # local map trained on 21x21
-    # parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
-    #                                                       "multi_maze_21_split_0_local_mask_ego_4/"
-    #                                                       "05-20/"
-    #                                                       "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
-    #                                                       "model")
-    # # local map trained on 7x7
-    parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
-                                                          "from_panzer/model_results/"
-                                                          "multi_maze_7_split_0_local_mask_ego_4/05-14/"
-                                                          "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64/"
+    # local map trained on 21x21
+    parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
+                                                          "multi_maze_21_split_0_local_mask_ego_4/"
+                                                          "05-20/"
+                                                          "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
                                                           "model")
+    # # # local map trained on 7x7
+    # parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
+    #                                                       "from_panzer/model_results/"
+    #                                                       "multi_maze_7_split_0_local_mask_ego_4/05-14/"
+    #                                                       "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64/"
+    #                                                       "model")
 
     # evaluation configurations
     parser.add_argument("--seed", type=int, default=0)
@@ -463,14 +463,17 @@ if __name__ == '__main__':
         fig.suptitle(f"Maze size {eval_configs['maze_size']} x {eval_configs['maze_size']}: Action = {actions[input_args.action]}", fontsize=25)
         my_map, my_maze, heat_err = myEval.plot_prediction_error_heat_map_ego_motion(idx)
 
+        # reverse the color map
+        heat_err = [0.25 - np.where(err == 0.0, 0.25, err) for err in heat_err]
+
         arr[1, 2].set_title("East", fontsize=20)
         h1 = arr[1, 2].imshow(heat_err[0].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h1, ax=arr[1, 2])
+        # plt.colorbar(h1, ax=arr[1, 2])
         arr[1, 2].axis('off')
 
         arr[0, 1].set_title("North", fontsize=20)
         h2 = arr[0, 1].imshow(heat_err[1].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h2, ax=arr[0, 1])
+        # plt.colorbar(h2, ax=arr[0, 1])
         arr[0, 1].axis('off')
 
         arr[1, 1].set_title("Map", fontsize=20)
@@ -479,12 +482,12 @@ if __name__ == '__main__':
 
         arr[1, 0].set_title("West", fontsize=20)
         h3 = arr[1, 0].imshow(heat_err[2].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h3, ax=arr[1, 0])
+        # plt.colorbar(h3, ax=arr[1, 0])
         arr[1, 0].axis('off')
 
         arr[2, 1].set_title("South", fontsize=20)
         h4 = arr[2, 1].imshow(heat_err[3].clip(0, 0.25), cmap='viridis', interpolation='nearest', vmin=0.0, vmax=0.25)
-        plt.colorbar(h4, ax=arr[2, 1])
+        # plt.colorbar(h4, ax=arr[2, 1])
         arr[2, 1].axis('off')
 
         arr[0, 0].axis('off')

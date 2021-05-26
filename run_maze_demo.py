@@ -1,4 +1,4 @@
-from env.Maze import GoalTextMaze
+from env.Maze_debug import GoalTextMaze
 import random
 
 import matplotlib.pyplot as plt
@@ -12,13 +12,13 @@ if __name__ == "__main__":
     maze_configurations = {
         'room_size': 3,  # room size
         'wall_size': 0.01,  # size of the wall
-        'obs_name': 'panorama-rgb',
+        'obs_name': 'panorama-depth',
         'max_episode_step': 100,
-        'random_init': True,
-        'random_goal': True,
+        'random_init': False,
+        'random_goal': False,
         'action_num': 4,
         'dist': 0,
-        'rnd_spawn': True,
+        'rnd_spawn': False,
     }
 
     random.seed(4312)
@@ -43,6 +43,7 @@ if __name__ == "__main__":
     for i in range(100):
         # random sample an action from the action space
         act = myMaze.action_space.sample()
+        act = 2
         next_obs, reward, done, _ = myMaze.step(act)
         obs = next_obs
         myMaze.render()
