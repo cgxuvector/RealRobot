@@ -74,11 +74,12 @@ class GoalDQNExperiment(object):
         # number of the evaluation
         eval_total_num = 100
         success_num = 0.0
+        optimal_steps = 10
         # start evaluation
         for i in range(eval_total_num):
             # reset the environment
             obs = self.reset()
-            for t in range(int(self.test_env.max_episode_steps)):
+            for t in range(optimal_steps):
                 # get action
                 self.agent.eps = 0
                 action = self.get_action(obs)
@@ -414,16 +415,11 @@ class HERDQNExperiment(object):
             # add to the buffer
             ep_obs.append(next_obs['observation'].copy())  # list of current observation T
             ep_ag.append(next_obs['achieved_goal'].copy())  # list of achieved observation T
-            ep_dg.append(goal_obs)  # list of goal observation T, goal is a tuple no need for copy
+            ep_dg.append(next_obs['desired_goal'].copy())  # list of goal observation T
             ep_act.append([action].copy())  # list of actions T - 1
 
             # reward
-            if len(rewards) == 0:
-                rewards.append(reward)
-            elif rewards[-1] != 0:
-                rewards.append(reward)
-            else:
-                pass
+            rewards.append(reward)
 
             # check termination
             if not np.mod(episode_t + 1, self.env.max_episode_steps):

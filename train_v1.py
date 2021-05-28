@@ -2,7 +2,7 @@ from experiment.GoalDQNExperiment import GoalDQNExperiment
 from experiment.HERExperiment import HERDQNExperiment
 from agent.GoalDQNAgent import GoalDQNAgent
 
-from env.Maze import GoalTextMaze
+from env.Maze_v1 import GoalTextMaze
 
 import argparse
 
@@ -16,9 +16,11 @@ def parse_input_arguments():
     parser.add_argument("--observation", type=str, default="state")
     parser.add_argument("--action_num", type=int, default=4)
     parser.add_argument("--panorama_mode", type=str, default='concat')
+    parser.add_argument("--action_space", type=str, default="4-actions")
     parser.add_argument("--random_init", action="store_true", default=True)
     parser.add_argument("--random_goal", action="store_true", default=True)
-    parser.add_argument("--random_spawn", action="store_true", default=False)
+    parser.add_argument("--agent_rnd_spawn", action="store_true", default=False)
+    parser.add_argument("--goal_rnd_spawn", action="store_true", default=False)
     parser.add_argument("--sample_dist", type=int, default=1)
     parser.add_argument("--reach_goal_eps", type=float, default=0.45)
     parser.add_argument("--max_episode_steps", type=int, default=50)
@@ -61,12 +63,14 @@ env_params = {
     'panorama_mode': args.panorama_mode,
     'random_init': args.random_init,
     'random_goal': args.random_goal,
-    'random_spawn': args.random_spawn,
+    'agent_rnd_spawn': args.agent_rnd_spawn,
+    'goal_rnd_spawn': args.goal_rnd_spawn,
     'goal_reach_eps': args.reach_goal_eps,
     'max_episode_steps': args.max_episode_steps,
     'room_size': args.room_size,
 
-    'action_num': args.action_num,
+    'action_num': 4 if args.action_space == "4-actions" else 3,
+    'action_space': args.action_space,
     'sample_dist': args.sample_dist
 }
 
@@ -114,25 +118,27 @@ def make_envs():
                            wall_size=0.01,
                            max_episode_steps=env_params['max_episode_steps'],  # step size
                            obs_name=env_params['obs_name'],
+                           action_space=env_params['action_space'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
-                           rnd_spawn=env_params['random_spawn'],
+                           agent_rnd_spawn=env_params['agent_rnd_spawn'],
+                           goal_rnd_spawn=env_params['goal_rnd_spawn'],
                            goal_reach_eps=env_params['goal_reach_eps'],
-                           dist=env_params['sample_dist'],
-                           action_num=env_params['action_num'])  # stop epsilon
+                           dist=env_params['sample_dist'])  # stop epsilon
 
     # creat the testing environment
     tst_env = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
-                           room_size=env_params['room_size'],
+                           room_size=env_params['room_size'],  # room size
                            wall_size=0.01,
-                           max_episode_steps=env_params['max_episode_steps'],
+                           max_episode_steps=env_params['max_episode_steps'],  # step size
                            obs_name=env_params['obs_name'],
+                           action_space=env_params['action_space'],
                            rnd_init=env_params['random_init'],
                            rnd_goal=env_params['random_goal'],
-                           rnd_spawn=env_params['random_spawn'],
-                           dist=env_params['sample_dist'],
+                           agent_rnd_spawn=env_params['agent_rnd_spawn'],
+                           goal_rnd_spawn=env_params['goal_rnd_spawn'],
                            goal_reach_eps=env_params['goal_reach_eps'],
-                           action_num=env_params['action_num'])
+                           dist=env_params['sample_dist'])  # stop epsilon
 
     return [trn_env, tst_env]
 

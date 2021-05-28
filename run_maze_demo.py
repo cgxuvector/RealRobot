@@ -49,6 +49,7 @@ if __name__ == "__main__":
         obs = next_obs
         myMaze.plot_panorama_point_cloud()
         myMaze.render()
+        Debug.set_trace()
         if done:
             myMaze.reset()
 

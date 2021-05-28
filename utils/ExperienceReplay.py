@@ -207,9 +207,6 @@ class SampleFuncReplayBuffer(object):
         # sampler function
         self.sample_func = sample_func
 
-        # multi-threads control
-        # self.lock = threading.Lock()
-
     # get the size of the buffer, by default, we return the number of episodes
     def __len__(self):
         # with self.lock:

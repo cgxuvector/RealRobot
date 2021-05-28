@@ -367,7 +367,7 @@ def parse_input():
 
     # environment to evaluate
     # maze size
-    parser.add_argument("--maze_size", type=int, default=9)
+    parser.add_argument("--maze_size", type=int, default=15)
     # maze id
     parser.add_argument("--maze_id", type=int, default=0)
     # maximal episode steps
@@ -375,18 +375,18 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
-    # local map trained on 21x21
-    parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
-                                                          "multi_maze_21_split_0_local_mask_ego_4/"
-                                                          "05-20/"
-                                                          "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
-                                                          "model")
-    # # # local map trained on 7x7
-    # parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
-    #                                                       "from_panzer/model_results/"
-    #                                                       "multi_maze_7_split_0_local_mask_ego_4/05-14/"
-    #                                                       "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64/"
+    # # local map trained on 21x21
+    # parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
+    #                                                       "multi_maze_21_split_0_local_mask_ego_4/"
+    #                                                       "05-20/"
+    #                                                       "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
     #                                                       "model")
+    # # local map trained on 7x7
+    parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
+                                                          "from_panzer/model_results/"
+                                                          "multi_maze_7_split_0_local_mask_ego_4/05-14/"
+                                                          "19-33-09_multi_maze_7_split_0_local_mask_ego_4_batch_64/"
+                                                          "model")
 
     # evaluation configurations
     parser.add_argument("--seed", type=int, default=0)
@@ -396,7 +396,7 @@ def parse_input():
     parser.add_argument("--device", type=str, default="cuda:0")
 
     # for heat map
-    parser.add_argument("--action", type=int, default=2)
+    parser.add_argument("--action", type=int, default=3)
 
     # for planning having tolerance of model error
     # There is not only one way to do this. Here, we just use a list to track the wall positions

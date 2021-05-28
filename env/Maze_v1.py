@@ -48,13 +48,15 @@ class GoalTextMaze(MiniWorldEnv):
         obs_name="rgb",
         rnd_init=False,
         rnd_goal=False,
+        agent_rnd_spawn=False,  # if True, the agent will be randomly spawn in a room
+        goal_rnd_spawn=False,  # if True, the goal will be randomly spawn in a room
         dist=0,
-        rnd_spawn=False,  # if True, the agent will be randomly spawn in a room
-        action_num=4,
+        action_space="4-actions",  # name of the action space
         goal_reach_eps=1e-3,  # values indicates the goal is reached.
         eval_mode=False,  # visualize the goal position when True
         view="agent",  # view angle for visualization
-        **kwargs
+        obs_width=80,  # set the observation width
+        obs_height=60  # set the observation height
     ):
         """
         Initial function. Here are several notes:
@@ -89,8 +91,16 @@ class GoalTextMaze(MiniWorldEnv):
         self.gap_size = wall_size  # room gap size (i.e. wall thickness)
 
         # customize the action space
-        self.ACTION_NAME = ['turn_left', 'turn_right', 'forward', 'backward']  # name of the discrete actions
-        self.action_space = spaces.Discrete(len(self.ACTION_NAME))  # create the action space
+        if action_space == "4-actions":
+            self.action_num = 4
+            self.ACTION_NAME = ['turn_left', 'turn_right', 'forward', 'backward']  # four actions space
+            self.agent_action_space = [0, 1, 2, 3]
+        elif action_space == "3-actions":
+            self.action_num = 3
+            self.ACTION_NAME = ['turn_left', 'turn_right', 'forward']  # three actions space
+            self.agent_action_space = [0, 1, 2]
+        else:
+            raise Exception("Error action space name")
         self.forward_step_size = forward_step_size  # minimal forward/backward step size
         self.turn_step_size = turn_step_size  # minimal turn left/right step size
 
@@ -108,7 +118,8 @@ class GoalTextMaze(MiniWorldEnv):
         self.rnd_init = rnd_init  # whether randomize the start location
         self.rnd_goal = rnd_goal  # whether randomize the goal location
         self.dist = dist  # distance for the randomize the start goal locations
-        self.rnd_spawn = rnd_spawn  # whether spawn the agent at the center of the room.
+        self.agent_rnd_spawn = agent_rnd_spawn  # if True, randomly spawn the agent in the room. Otherwise, center spawn
+        self.goal_rnd_spawn = goal_rnd_spawn  # if True, randomly spawn the goal in the room. Otherwise, center spawn
         self.start_info = {}  # start information
         self.goal_info = {}  # goal information
         self.reach_goal_eps = goal_reach_eps  # epsilon as the goal reaching threshold
@@ -125,15 +136,15 @@ class GoalTextMaze(MiniWorldEnv):
 
         self.eval_mode = eval_mode
         self.view = view
+
         # construct the domain
         super().__init__(
             max_episode_steps=max_episode_steps or self.num_rows * self.num_cols * 24,
-            **kwargs
+            obs_width=obs_width,
+            obs_height=obs_height,
+            window_width=obs_width * 10,
+            window_height=obs_height * 10
         )
-
-        self.action_num = action_num
-        self.ACTION_NAME = [self.ACTION_NAME[i] for i in range(action_num)]
-        self.action_space = spaces.Discrete(action_num)  # create the action space
 
     def reset(self):
         """
@@ -165,7 +176,7 @@ class GoalTextMaze(MiniWorldEnv):
             'light_ambient'
         ])
 
-        # Generate the world (overridden blew in auxiliary functions)
+        # Generate the world and record the start and goal rooms
         self._gen_world()
 
         # Get the max forward step distance
@@ -188,22 +199,11 @@ class GoalTextMaze(MiniWorldEnv):
         # Pre-compile static parts of the environment into a display list
         self._render_static()
 
-        # set the agent to the goal room
-        goal_room = self.goal_info['room']
-        self._place_agent(goal_room, pos=np.array([goal_room.mid_x, 0, goal_room.mid_z]))
-        # retrieve the observation of the goal
+        # get the goal observations
         self.goal_info['goal_obs'] = self._render_customize_obs()
 
-        # reset the agent to the start room
-        start_room = self.start_info['room']
-        # retrieve the observation
-        if self.rnd_spawn:  # spawn the agent randomly in a room
-            sample_x = random.uniform(start_room.min_x + 0.5, start_room.max_x - 0.5)
-            sample_z = random.uniform(start_room.min_z + 0.5, start_room.max_z - 0.5)
-            self._place_agent(room=start_room, pos=np.array([sample_x, 0, sample_z]))
-            self.start_info['pos'] = self.agent.pos
-        else:
-            self._place_agent(start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+        # reset the agent to start
+        self._place_agent(room=self.start_info['room'], pos=self.start_info['pos'])
         obs = self._render_customize_obs()
 
         # construct the goal-rl observation
@@ -275,11 +275,11 @@ class GoalTextMaze(MiniWorldEnv):
         # render the current observation
         obs = self._render_customize_obs()
 
+        # view name
         view = self.view
 
-        # # no need to visualize state
-        # if self.observation_name == "state":
-        #     return obs
+        if view == "agent":
+            return obs
 
         if view == "top_down":
             if self.render_init_marker:
@@ -494,24 +494,39 @@ class GoalTextMaze(MiniWorldEnv):
             agent_room_loc = self.valid_locations[0]
             goal_room_loc = self.valid_locations[-1]
 
-        # place the agent randomly
-        # print(f"Agent is spawned in room {agent_room_loc}")
+        # randomly select a start room
         start_room = rows[agent_room_loc[0]][agent_room_loc[1]]
-        # spawn the agent in at the room center
-        self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
+        # retrieve the observation
+        if self.agent_rnd_spawn:  # spawn the agent randomly in a room
+            sample_x = random.uniform(start_room.min_x + self.forward_step_size,
+                                      start_room.max_x - self.forward_step_size)
+            sample_z = random.uniform(start_room.min_z + self.forward_step_size,
+                                      start_room.max_z - self.forward_step_size)
+            self._place_agent(room=start_room, pos=np.array([sample_x, 0, sample_z]))
+        else:
+            self._place_agent(room=start_room, pos=np.array([start_room.mid_x, 0, start_room.mid_z]))
 
+        # record the agent info
+        self.start_info['room'] = start_room
         self.start_info['pos'] = self.agent.pos
         self.start_info['ori'] = self.agent.dir
-        self.start_info['room'] = start_room
 
-        # place the goal randomly
-        # print(f"Goal is spawned in room {goal_room_loc}")
+        # randomly select a goal room
         goal_room = rows[goal_room_loc[0]][goal_room_loc[1]]
-        # initialize the goal at the center of the room
-        self.goal_info['pos'] = np.array([goal_room.mid_x, 0, goal_room.mid_z])
-        self.goal_info['ori'] = 0
+        if self.goal_rnd_spawn:  # spawn the agent randomly in the room
+            sample_x = random.uniform(goal_room.min_x + self.forward_step_size,
+                                      goal_room.max_x - self.forward_step_size)
+            sample_z = random.uniform(goal_room.min_z + self.forward_step_size,
+                                      goal_room.max_z - self.forward_step_size)
+            self._place_agent(room=goal_room, pos=np.array([sample_x, 0, sample_z]))
+        else:
+            self._place_agent(room=goal_room, pos=np.array([goal_room.mid_x, 0, goal_room.mid_z]))
+        # store the goal info
         self.goal_info['room'] = goal_room
-        # place the goal as a red box
+        self.goal_info['pos'] = self.agent.pos
+        self.goal_info['ori'] = self.agent.dir
+
+        # place the goal as a red box if the current mode is evaluation
         if self.eval_mode:
             self._place_goal(room=goal_room, pos=self.goal_info['pos'])
 
