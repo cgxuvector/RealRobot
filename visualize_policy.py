@@ -16,7 +16,7 @@ def parse_input_arguments():
     # arguments for environment
     parser.add_argument("--observation", type=str, default="state")
     parser.add_argument("--panorama_mode", type=str, default='concat')
-    parser.add_argument("--action_space", type=str, default='4-actions')
+    parser.add_argument("--action_space", type=str, default='3-actions')
     parser.add_argument("--random_init", action="store_true", default=True)
     parser.add_argument("--random_goal", action="store_true", default=True)
     parser.add_argument("--agent_rnd_spawn", action="store_true", default=True)
@@ -32,11 +32,11 @@ def parse_input_arguments():
     parser.add_argument("--dqn_mode", type=str, default="double")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--sparse_reward", type=float, default=0)
-    # model for state
-    parser.add_argument("--model_path", type=str, default="./results/goal_dqn_double_state_rs_3_dist_1_her_vanilla/"
-                                                          "05-27/"
-                                                          "21-14-20_goal_dqn_double_state_rs_3_dist_1_her_vanilla_test_env/"
-                                                          "model/")
+    # # model for state
+    # parser.add_argument("--model_path", type=str, default="./results/goal_dqn_double_state_rs_3_dist_1_her_vanilla/"
+    #                                                       "05-27/"
+    #                                                       "21-14-20_goal_dqn_double_state_rs_3_dist_1_her_vanilla_test_env/"
+    #                                                       "model/")
 
     # # model for state
     # parser.add_argument("--model_path", type=str, default="./results/from_panzer/goal_dqn/results/"
@@ -44,6 +44,13 @@ def parse_input_arguments():
     #                                                       "05-26/"
     #                                                       "17-26-28_goal_dqn_double_obs_rs_3_dist_1_no_her_test_env/"
     #                                                       "model/")
+
+    # model for state 3 actions rnd start position and orientation and rnd goal position
+    parser.add_argument("--model_path", type=str, default="./results/"
+                                                          "goal_dqn_double_state_rs_3_dist_1_vanilla_3_act_rnd_ori_her_soft/"
+                                                          "05-31/"
+                                                          "11-56-27_goal_dqn_double_state_rs_3_dist_1_vanilla_3_act_rnd_ori_her_soft_test_env/"
+                                                          "model/")
 
     parser.add_argument("--view", type=str, default="top_down")
     parser.add_argument("--eval_mode", action="store_true", default=True)
@@ -69,6 +76,7 @@ def make_env(env_params):
                         view=env_params['view'],
                         obs_width=env_params['obs_width'],
                         obs_height=env_params['obs_height'])
+
     return maze
 
 
@@ -85,7 +93,7 @@ def make_agent(agent_params, env_params):
 
 def visualize_policy(agent, env):
     test_episode_num = 100
-    max_episode_steps = 50
+    max_episode_steps = 10
     success_count = 0
     for e in range(test_episode_num):
         obs = env.reset()
@@ -150,6 +158,7 @@ if __name__ == "__main__":
         'obs_name': args.observation,
         'device': args.device,
         'model_path': args.model_path,
+        'action_space': args.action_space,
 
         # other unnecessary parameters
         'use_obs': False,

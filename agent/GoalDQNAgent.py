@@ -35,15 +35,25 @@ class GoalDQNAgent(object):
         self.agent_params = agent_params
 
         # environment parameters
-        self.action_space = np.linspace(0, 4, 4, endpoint=False).astype('uint8')
-        self.action_dim = 4
+        if env_params['action_space'] == '4-actions':
+            self.action_space = np.linspace(0, 4, 4, endpoint=False).astype('uint8')
+            self.action_dim = 4
+        elif env_params['action_space'] == '3-actions':
+            self.action_space = np.linspace(0, 3, 3, endpoint=False).astype('uint8')
+            self.action_dim = 3
+        else:
+            raise Exception("Invalid action space.")
 
         # create behavior policy and target networks
         self.dqn_mode = agent_params['dqn_mode']
         self.use_obs = agent_params['use_obs']
         self.gamma = agent_params['gamma']
-        self.behavior_policy_net = GoalDeepQNet(env_params['obs_name'], env_params['panorama_mode'])
-        self.target_policy_net = GoalDeepQNet(env_params['obs_name'], env_params['panorama_mode'])
+        self.behavior_policy_net = GoalDeepQNet(env_params['obs_name'],
+                                                env_params['panorama_mode'],
+                                                act_dim=self.action_dim)
+        self.target_policy_net = GoalDeepQNet(env_params['obs_name'],
+                                              env_params['panorama_mode'],
+                                              act_dim=self.action_dim)
 
         # initialize target network with behavior network
         self.behavior_policy_net.apply(customized_weights_init)
@@ -117,7 +127,13 @@ class GoalDQNAgent(object):
 
     # update update target policy
     def update_target_policy(self):
-        self.target_policy_net.load_state_dict(self.behavior_policy_net.state_dict())
+        tau = self.agent_params['polyak']
+        if tau == 0:
+            self.target_policy_net.load_state_dict(self.behavior_policy_net.state_dict())
+        else:
+            assert tau >= 0.9, f"Invalid tau value, expected to be > 0.9, but get{tau}"
+            for param, target_param in zip(self.behavior_policy_net.parameters(), self.target_policy_net.parameters()):
+                target_param.data.copy_((1 - tau) * param.data + tau * target_param.data)
 
     # load trained model
     def load_model(self, model_file):

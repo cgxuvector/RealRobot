@@ -214,7 +214,7 @@ class PanoramaImgEncoder(nn.Module):
 # class of the goal-conditioned network model
 class GoalDeepQNet(nn.Module):
     # initialization
-    def __init__(self, obs_type='state', panorama_obs_mode='concat'):
+    def __init__(self, obs_type='state', panorama_obs_mode='concat', act_dim=4):
         # inherit from nn module
         super(GoalDeepQNet, self).__init__()
 
@@ -224,13 +224,15 @@ class GoalDeepQNet(nn.Module):
         # panorama observation mode
         self.panorama_obs_mode = panorama_obs_mode
 
+        # dimension of the action
+        self.act_dim = act_dim
+
         # image encoder for non-state observations
         if obs_type == 'rgb' or obs_type == 'depth':
             self.encoder = ImgEncoder(obs_type)
             # for debug
             obs_dim = 512
             goal_dim = 512
-            act_dim = 4
         # image encoder for panorama observations
         elif obs_type == "panorama-rgb" or obs_type == "panorama-depth":
             self.encoder = PanoramaImgEncoder(obs_type, panorama_obs_mode)
@@ -238,16 +240,13 @@ class GoalDeepQNet(nn.Module):
             if panorama_obs_mode == "concat":
                 obs_dim = 2048
                 goal_dim = 2048
-                act_dim = 4
             else:
                 obs_dim = 512
                 goal_dim = 512
-                act_dim = 4
         else:
             # for debug case
             obs_dim = 4  # [x, y, sin(theta), cos(theta)]
             goal_dim = 4  # [x, y, sin(theta), cos(theta)]
-            act_dim = 4
 
         # feed forward network
         self.fc_layer = nn.Sequential(
@@ -255,7 +254,7 @@ class GoalDeepQNet(nn.Module):
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(256, act_dim),
+            nn.Linear(256, self.act_dim),
             nn.Identity()
         )
 

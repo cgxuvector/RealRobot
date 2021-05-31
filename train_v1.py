@@ -40,10 +40,11 @@ def parse_input_arguments():
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--update_policy_freq", type=int, default=4)
     parser.add_argument("--update_target_freq", type=int, default=2000)
+    parser.add_argument("--polyak", type=float, default=0.0)
     parser.add_argument("--eval_policy_freq", type=int, default=1000)
 
     # arguments for techniques
-    parser.add_argument("--use_her", action="store_true", default=True)
+    parser.add_argument("--use_her", action="store_true", default=False)
     parser.add_argument("--sparse_reward", type=float, default=0)
 
     # for logging
@@ -80,6 +81,7 @@ agent_params = {
     'gamma': args.gamma,
     'device': args.device,
     'lr': args.lr,
+    'polyak': args.polyak
 }
 
 training_params = {

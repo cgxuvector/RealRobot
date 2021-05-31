@@ -137,6 +137,8 @@ class GoalTextMaze(MiniWorldEnv):
         self.eval_mode = eval_mode
         self.view = view
 
+        self.orientation_list = [0, np.pi / 2, np.pi, -np.pi/2]
+
         # construct the domain
         super().__init__(
             max_episode_steps=max_episode_steps or self.num_rows * self.num_cols * 24,
@@ -203,7 +205,12 @@ class GoalTextMaze(MiniWorldEnv):
         self.goal_info['goal_obs'] = self._render_customize_obs()
 
         # reset the agent to start
-        self._place_agent(room=self.start_info['room'], pos=self.start_info['pos'])
+        # sample an orientation
+        if self.agent_rnd_spawn:
+            ori = random.sample(self.orientation_list, 1)[0]
+        else:
+            ori = 0
+        self._place_agent(room=self.start_info['room'], pos=self.start_info['pos'], ori=ori)
         obs = self._render_customize_obs()
 
         # construct the goal-rl observation
