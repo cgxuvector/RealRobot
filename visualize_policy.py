@@ -1,7 +1,7 @@
 from agent.GoalDQNAgent import GoalDQNAgent
 from env.Maze_v1 import GoalTextMaze
 import matplotlib.pyplot as plt
-
+import numpy as np
 import IPython.terminal.debugger as Debug
 
 import argparse
@@ -14,19 +14,22 @@ def parse_input_arguments():
     parser = argparse.ArgumentParser()
 
     # arguments for environment
-    parser.add_argument("--observation", type=str, default="state")
+    parser.add_argument("--observation", type=str, default="panorama-depth")
     parser.add_argument("--panorama_mode", type=str, default='concat')
     parser.add_argument("--action_space", type=str, default='3-actions')
     parser.add_argument("--random_init", action="store_true", default=True)
     parser.add_argument("--random_goal", action="store_true", default=True)
     parser.add_argument("--agent_rnd_spawn", action="store_true", default=True)
     parser.add_argument("--goal_rnd_spawn", action="store_true", default=True)
-    parser.add_argument("--obs_width", type=int, default=256)  # too big window will cause the shutdown freeze
-    parser.add_argument("--obs_height", type=int, default=256)
+    parser.add_argument("--obs_width", type=int, default=320)  # too big window will cause the shutdown freeze
+    parser.add_argument("--obs_height", type=int, default=240)
     parser.add_argument("--reach_goal_eps", type=float, default=0.5)
     parser.add_argument("--max_episode_steps", type=int, default=10)
-    parser.add_argument("--room_size", type=int, default=3)
+    parser.add_argument("--room_size", type=int, default=0.78)
+    parser.add_argument("--wall_size", type=float, default=0.01)
     parser.add_argument("--sample_dist", type=int, default=1)
+    parser.add_argument("--agent_radius", type=float, default=0.175)
+    parser.add_argument("--forward_step_size", type=float, default=0.2)
 
     # arguments for agent
     parser.add_argument("--dqn_mode", type=str, default="double")
@@ -45,22 +48,25 @@ def parse_input_arguments():
     #                                                       "17-26-28_goal_dqn_double_obs_rs_3_dist_1_no_her_test_env/"
     #                                                       "model/")
 
-    # model for state 3 actions rnd start position and orientation and rnd goal position
-    parser.add_argument("--model_path", type=str, default="./results/"
-                                                          "goal_dqn_double_state_rs_3_dist_1_vanilla_3_act_rnd_ori_her_soft/"
-                                                          "05-31/"
-                                                          "11-56-27_goal_dqn_double_state_rs_3_dist_1_vanilla_3_act_rnd_ori_her_soft_test_env/"
-                                                          "model/")
+    # model for observations 3 actions rnd start position and orientation and rnd goal position
+    parser.add_argument("--model_path", type=str, default="./results/local_goal_policy_dist_1_obs/06-24/"
+                                                          "15-08-36_local_goal_policy_dist_1_obs_test_env/model/")
+
+    # # model for state 3 actions rnd start position and orientation and rnd goal position
+    # parser.add_argument("--model_path", type=str, default="./results/6_24_local_dqn_policy_no_her_dist_1_rnd_goal/"
+    #                                                       "06-24/"
+    #                                                       "18-01-07_6_24_local_dqn_policy_"
+    #                                                       "no_her_dist_1_rnd_goal_test_env/model/")
 
     parser.add_argument("--view", type=str, default="top_down")
-    parser.add_argument("--eval_mode", action="store_true", default=True)
+    parser.add_argument("--eval_mode", action="store_true", default=False)
 
     return parser.parse_args()
 
 
 def make_env(env_params):
     # create the maze from text
-    maze = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
+    maze = GoalTextMaze(text_file='env/mazes/maze_7_2.txt',
                         room_size=env_params['room_size'],
                         wall_size=env_params['wall_size'],
                         obs_name=env_params['obs_name'],
@@ -75,7 +81,9 @@ def make_env(env_params):
                         eval_mode=env_params['eval_mode'],
                         view=env_params['view'],
                         obs_width=env_params['obs_width'],
-                        obs_height=env_params['obs_height'])
+                        obs_height=env_params['obs_height'],
+                        agent_radius=env_params['agent_radius'],
+                        forward_step_size=env_params['forward_step_size'])
 
     return maze
 
@@ -86,6 +94,15 @@ def make_agent(agent_params, env_params):
     agent.behavior_policy_net.load_state_dict(torch.load(agent_params['model_path'] + 'test_model.pt',
                                                          map_location=agent_params['device']))
     agent.behavior_policy_net.eval()
+    # action_names = ['left', 'right', 'forward']
+    # test_state = torch.tensor([3.45, 3.44, 0, -1]).view(1, -1).float().to(torch.device('cuda:0'))
+    # goal_state = torch.tensor([2.5, 3.51, 0, 1]).view(1, -1).float().to(torch.device('cuda:0'))
+    # # prediction action
+    # print(agent.behavior_policy_net(test_state, goal_state))
+    # action = agent.behavior_policy_net(test_state, goal_state).max(dim=1)[1].item()
+    # print(action_names[action])
+    # Debug.set_trace()
+    # torch.save(agent.behavior_policy_net.state_dict(), './norm_sim2real_state_model_binary.pt', _use_new_zipfile_serialization=False)
     agent.eps = 0
 
     return agent
@@ -109,11 +126,11 @@ def visualize_policy(agent, env):
             # step
             next_obs, reward, done, _ = env.step(action)
             current_loc = env.agent.pos
-            # print(f"state = {last_loc}, "
-            #       f"act = {env.ACTION_NAME[action]}, "
-            #       f"next state = {current_loc},"
-            #       f"reward = {reward},"
-            #       f"goal = {goal_loc}")
+            print(f"state = {last_loc}, "
+                  f"act = {env.ACTION_NAME[action]}, "
+                  f"next state = {current_loc},"
+                  f"reward = {reward},"
+                  f"goal = {goal_loc}")
             # render
             env.render()
             if reward == 0:
@@ -149,7 +166,9 @@ if __name__ == "__main__":
         'goal_reach_eps': args.reach_goal_eps,
         'view': args.view,
         'eval_mode': args.eval_mode,
-        'action_space': args.action_space
+        'action_space': args.action_space,
+        'agent_radius': args.agent_radius,
+        'forward_step_size': args.forward_step_size
     }
 
     # define agent parameters

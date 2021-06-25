@@ -52,7 +52,7 @@ class HyperModel(object):
         dyna_model = DynamicModel().to(self.device)
 
         # load the trained parameters
-        hyper_model.load_state_dict(torch.load(os.path.join(self.configs['model_path'], 'trn_hyper_model.pt'),
+        hyper_model.load_state_dict(torch.load(os.path.join(self.configs['model_path'], 'best_eval_hyper_model.pt'),
                                                map_location="cuda:0"))
         hyper_model.eval()
 
@@ -323,35 +323,46 @@ class HyperModel(object):
 
             # four orientations
             act = self.configs['action']
+            debug_local_map = np.array([[0, 0, 0], [0, 1, 1], [0, 0, 0]])
             for i, ori in enumerate([0, np.pi / 2, np.pi, 3 * np.pi / 2]):
                 # compute the location
                 encode_ori = [np.sin(ori), np.cos(ori)]
                 loc = valid_position + encode_ori
+                # compute the next state
+                next_state = inner_step_func(loc, act, maze_arr, ori)
+                # manually mask the map
+                _, m = MapProcessor.manual_mask_ego_motion(loc, map_data)
+                m = MapProcessor.resize_optim(m, (32, 32))
+                map_tensor = torch.tensor(m).unsqueeze(dim=0).unsqueeze(dim=0).float().to(self.device)
+
+                if self.configs['use_relative_pos']:
+                    # align the map and maze coordinates
+                    s_pos = np.array(valid_position) + 3.0
+                    next_state = (np.array(next_state[0:2]) + 3.0).tolist() + next_state[2:]
+                    # compute the origin loc and offset
+                    map_loc = s_pos // 3.0
+                    origin_map_loc = map_loc - 1.0
+                    offset = -1 * origin_map_loc * 3.0
+
+                    # update the states
+                    s_relative = s_pos + offset
+                    loc = s_relative.tolist() + encode_ori
+                    next_state = [next_state[0] + offset[0], next_state[1] + offset[1]] + next_state[2:]
 
                 # predict the next state
                 state_tensor = torch.tensor(loc).view(1, -1).float().to(self.device)
                 act_tensor = torch.tensor(act).view(1, -1).float().to(self.device)
 
-                # manually mask the map
-                map_copy = None
-                _, m = MapProcessor.manual_mask_ego_motion(loc, map_data)
-                map_copy = m.copy()
-
-                m = MapProcessor.resize_optim(m, (32, 32))
-                map_tensor = torch.tensor(m).unsqueeze(dim=0).unsqueeze(dim=0).float().to(self.device)
                 # generate the mazes
                 weights = self.hyper_model(map_tensor)
                 pred_next_offset = self.dyna_model(state_tensor, act_tensor, weights)
                 pred_next = (state_tensor + pred_next_offset).detach().cpu().numpy()
 
-                # compute the ground truth next state
-                next_state = inner_step_func(loc, act, maze_arr, ori)
                 positional_err = np.sqrt(np.sum(np.array(next_state)[0:2] - pred_next[0, 0:2])**2)
                 rotational_err = np.sqrt(np.sum(np.array(next_state)[2:] - pred_next[0, 2:])**2)
                 if positional_err > 0.25 or rotational_err > 0.01:
                     print(f"state = {loc}, act = {action_names[act]}, next state = {next_state}, pred_next = {pred_next},"
                           f"P err = {positional_err}, R err = {rotational_err}")
-
                 heatmap_list[i][r, c] = positional_err + rotational_err
 
         return map_data, maze_arr, heatmap_list
@@ -367,7 +378,7 @@ def parse_input():
 
     # environment to evaluate
     # maze size
-    parser.add_argument("--maze_size", type=int, default=15)
+    parser.add_argument("--maze_size", type=int, default=7)
     # maze id
     parser.add_argument("--maze_id", type=int, default=0)
     # maximal episode steps
@@ -375,12 +386,12 @@ def parse_input():
 
     # evaluate split
     parser.add_argument("--split_id", type=int, default=0)
-    # # local map trained on 21x21
+    # local map trained on 21x21
     # parser.add_argument("--model_path", type=str, default="./results/from_panzer/hyper_test/"
-    #                                                       "multi_maze_21_split_0_local_mask_ego_4/"
-    #                                                       "05-20/"
-    #                                                       "17-32-19_multi_maze_21_split_0_local_mask_ego_4_batch_64/"
-    #                                                       "model")
+    #                                                       "multi_maze_21_split_0_local_mask_ego_4_relative_pos_coord/"
+    #                                                       "06-02/"
+    #                                                       "11-15-35_multi_maze_21_split_0_local_mask_ego_4_relative_pos_coord_batch_64"
+    #                                                       "/model")
     # # local map trained on 7x7
     parser.add_argument("--model_path", type=str, default="/home/xcg/PycharmProjects/multi-goals-rl/results/"
                                                           "from_panzer/model_results/"
@@ -396,7 +407,7 @@ def parse_input():
     parser.add_argument("--device", type=str, default="cuda:0")
 
     # for heat map
-    parser.add_argument("--action", type=int, default=3)
+    parser.add_argument("--action", type=int, default=2)
 
     # for planning having tolerance of model error
     # There is not only one way to do this. Here, we just use a list to track the wall positions
@@ -408,6 +419,9 @@ def parse_input():
 
     # map filter path
     parser.add_argument("--map_filter_path", type=str, default=None)
+
+    # whether use relative positions
+    parser.add_argument("--use_relative_pos", action="store_true", default=False)
 
     return parser.parse_args()
 
@@ -449,7 +463,9 @@ if __name__ == '__main__':
 
         'map_mask': input_args.map_mask_type,
 
-        'map_filter_path': input_args.map_filter_path
+        'map_filter_path': input_args.map_filter_path,
+
+        'use_relative_pos': input_args.use_relative_pos
     }
 
     # create the evaluator

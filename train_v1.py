@@ -14,17 +14,19 @@ def parse_input_arguments():
 
     # arguments for environment
     parser.add_argument("--observation", type=str, default="state")
-    parser.add_argument("--action_num", type=int, default=4)
+    parser.add_argument("--action_num", type=int, default=3)
     parser.add_argument("--panorama_mode", type=str, default='concat')
-    parser.add_argument("--action_space", type=str, default="4-actions")
+    parser.add_argument("--action_space", type=str, default="3-actions")
     parser.add_argument("--random_init", action="store_true", default=True)
     parser.add_argument("--random_goal", action="store_true", default=True)
-    parser.add_argument("--agent_rnd_spawn", action="store_true", default=False)
-    parser.add_argument("--goal_rnd_spawn", action="store_true", default=False)
-    parser.add_argument("--sample_dist", type=int, default=1)
-    parser.add_argument("--reach_goal_eps", type=float, default=0.45)
+    parser.add_argument("--agent_rnd_spawn", action="store_true", default=True)
+    parser.add_argument("--goal_rnd_spawn", action="store_true", default=True)
+    parser.add_argument("--sample_dist", type=int, default=0)
+    parser.add_argument("--reach_goal_eps", type=float, default=0.15)  # change the goal reaching eps
     parser.add_argument("--max_episode_steps", type=int, default=50)
-    parser.add_argument("--room_size", type=int, default=3)
+    parser.add_argument("--room_size", type=int, default=0.78)  # change the size of the room
+    parser.add_argument("--agent_radius", type=float, default=0.175)  # change the agent radius
+    parser.add_argument("--forward_step_size", type=float, default=0.2)  # step size of the agent
 
     # arguments for agent
     parser.add_argument("--dqn_mode", type=str, default="double")
@@ -35,7 +37,7 @@ def parse_input_arguments():
     # arguments for training
     parser.add_argument("--env_name", type=str, default="test_env")
     parser.add_argument("--start_train_step", type=int, default=1000)
-    parser.add_argument("--total_time_steps", type=int, default=1000000)
+    parser.add_argument("--total_time_steps", type=int, default=2000000)
     parser.add_argument("--memory_size", type=int, default=100000)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--update_policy_freq", type=int, default=4)
@@ -72,7 +74,10 @@ env_params = {
 
     'action_num': 4 if args.action_space == "4-actions" else 3,
     'action_space': args.action_space,
-    'sample_dist': args.sample_dist
+    'sample_dist': args.sample_dist,
+
+    'agent_radius': 0.175,
+    'forward_step_size': 0.2
 }
 
 agent_params = {
@@ -126,7 +131,11 @@ def make_envs():
                            agent_rnd_spawn=env_params['agent_rnd_spawn'],
                            goal_rnd_spawn=env_params['goal_rnd_spawn'],
                            goal_reach_eps=env_params['goal_reach_eps'],
-                           dist=env_params['sample_dist'])  # stop epsilon
+                           dist=env_params['sample_dist'],
+                           agent_radius=env_params['agent_radius'],
+                           forward_step_size=env_params['forward_step_size'],
+                           obs_width=160,
+                           obs_height=120)  # stop epsilon
 
     # creat the testing environment
     tst_env = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
@@ -140,7 +149,11 @@ def make_envs():
                            agent_rnd_spawn=env_params['agent_rnd_spawn'],
                            goal_rnd_spawn=env_params['goal_rnd_spawn'],
                            goal_reach_eps=env_params['goal_reach_eps'],
-                           dist=env_params['sample_dist'])  # stop epsilon
+                           dist=env_params['sample_dist'],
+                           agent_radius=env_params['agent_radius'],
+                           forward_step_size=env_params['forward_step_size'],
+                           obs_width=160,
+                           obs_height=120)  # stop epsilon
 
     return [trn_env, tst_env]
 

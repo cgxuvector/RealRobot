@@ -12,7 +12,6 @@
 """
 import random
 import copy as cp
-from gym import spaces
 from gym_miniworld.miniworld import MiniWorldEnv
 from gym_miniworld.entity import *
 from gym_miniworld.opengl import *
@@ -56,7 +55,8 @@ class GoalTextMaze(MiniWorldEnv):
         eval_mode=False,  # visualize the goal position when True
         view="agent",  # view angle for visualization
         obs_width=80,  # set the observation width
-        obs_height=60  # set the observation height
+        obs_height=60,  # set the observation height,
+        agent_radius=0.4  # radius of the agent
     ):
         """
         Initial function. Here are several notes:
@@ -127,6 +127,7 @@ class GoalTextMaze(MiniWorldEnv):
         # Parameters for bug-free inherit
         self.step_count = 0
         self.agent = Agent()
+        self.agent_radius = agent_radius  # set the radius of the agent
         self.entities = []
         self.rooms = []
         self.wall_segs = []
@@ -139,6 +140,9 @@ class GoalTextMaze(MiniWorldEnv):
 
         self.orientation_list = [0, np.pi / 2, np.pi, -np.pi/2]
 
+        # Collecting the possible rooms
+        self.data_rooms = []
+
         # construct the domain
         super().__init__(
             max_episode_steps=max_episode_steps or self.num_rows * self.num_cols * 24,
@@ -148,7 +152,7 @@ class GoalTextMaze(MiniWorldEnv):
             window_height=obs_height * 10
         )
 
-    def reset(self):
+    def reset(self, set_pos=None, set_room=None, set_ori=None):
         """
             Reset function. Because I customize the observation, there for I override the whole function.
         """
@@ -210,6 +214,11 @@ class GoalTextMaze(MiniWorldEnv):
             ori = random.sample(self.orientation_list, 1)[0]
         else:
             ori = 0
+        # set the start position by room and position
+        if set_pos is not None and set_room is not None and set_ori is not None:
+            self.start_info['room'] = set_room
+            self.start_info['pos'] = set_pos
+            ori = set_ori
         self._place_agent(room=self.start_info['room'], pos=self.start_info['pos'], ori=ori)
         obs = self._render_customize_obs()
 
@@ -326,7 +335,7 @@ class GoalTextMaze(MiniWorldEnv):
                     self.render_arrays[1, 2].set_title("R")
                     self.render_artists.append(self.render_arrays[1, 2].imshow(obs[0]))
                     self.render_arrays[1, 1].set_title("Top down")
-                    self.render_artists.append(self.render_arrays[1, 1].imshow(top_obs, aspect='auto'))
+                    self.render_artists.append(self.render_arrays[1, 1].imshow(top_obs))
                     self.render_init_marker = False
                 else:
                     top_obs = self.render_top_view()
@@ -356,6 +365,7 @@ class GoalTextMaze(MiniWorldEnv):
 
     def _place_agent(self, room=None, pos=None, ori=0):
         """ Place the agent """
+        self.agent.radius = self.agent_radius
         return self.place_entity(
                     ent=self.agent,
                     room=room,
@@ -365,13 +375,22 @@ class GoalTextMaze(MiniWorldEnv):
 
     def _place_goal(self, room=None, pos=None, ori=0):
         """ Place the goal """
-        goal_ent = Box(color='red', size=0.5)
+        goal_ent = Box(color='red', size=self.agent_radius)
         return self.place_entity(
                     ent=goal_ent,
                     room=room,
                     pos=pos,  # goal position
                     dir=ori   # goal direction
                 )
+
+    def get_agent_room(self):
+        # obtain the agent location
+        x, _, z = self.agent.pos
+        # compute the room index
+        room_row_id = int((z // self.room_size))
+        room_col_id = int((x // self.room_size))
+
+        return self.data_rooms[room_row_id][room_col_id], (room_row_id, room_col_id)
 
     @staticmethod
     def _load_txt(f_path):
@@ -476,6 +495,9 @@ class GoalTextMaze(MiniWorldEnv):
                     self.connect_rooms(room, neighbor, min_x=room.min_x, max_x=room.max_x)
                 elif dj == 0:
                     self.connect_rooms(room, neighbor, min_z=room.min_z, max_z=room.max_z)
+
+        # copy the rooms
+        self.data_rooms = rows
 
         # place the agent and the goal
         if self.rnd_init and self.rnd_goal:  # both random start and goal
