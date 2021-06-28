@@ -56,7 +56,9 @@ class GoalTextMaze(MiniWorldEnv):
         view="agent",  # view angle for visualization
         obs_width=80,  # set the observation width
         obs_height=60,  # set the observation height,
-        agent_radius=0.4  # radius of the agent
+        agent_radius=0.4,  # radius of the agent,
+        clip_depth_obs=False,  # clip the value of the depth image
+        clip_depth_max=3  # maximum of the depth values
     ):
         """
         Initial function. Here are several notes:
@@ -142,6 +144,10 @@ class GoalTextMaze(MiniWorldEnv):
 
         # Collecting the possible rooms
         self.data_rooms = []
+
+        # clip depth observation
+        self.clip_depth = clip_depth_obs
+        self.clip_max_val = clip_depth_max
 
         # construct the domain
         super().__init__(
@@ -567,12 +573,16 @@ class GoalTextMaze(MiniWorldEnv):
         # render the observation
         if self.observation_name == "depth":  # return depth observation; Shape: H x W
             obs = self.render_depth()
+            if self.clip_depth:  # if True, clip the depth observation (i.e., change it to be myopic)
+                obs = obs.clip(min=obs.min(), max=self.clip_max_val)
             obs = resize(obs, (32, 32))
         elif self.observation_name == 'rgb-d':  # return RGB + depth observation; Shape: H x W x 4
             rgb_obs = obs
             rgb_obs = resize(rgb_obs, (32, 32))
             d_obs = self.render_depth()
             d_obs = resize(d_obs, (32, 32))
+            if self.clip_depth:  # clip the depth image
+                d_obs = d_obs.clip(min=d_obs.min, max=self.clip_max_val)
             obs = np.concatenate((rgb_obs, d_obs), axis=2)
         elif self.observation_name == 'rgb':  # return RGB observation; Shape: H x W x 3
             obs = obs
@@ -648,7 +658,11 @@ class GoalTextMaze(MiniWorldEnv):
             )
         else:
             self.render_obs(frame_buffer)
-            return frame_buffer.get_depth_map(0.04, 100.0)
+            depth_obs = frame_buffer.get_depth_map(0.04, 100.0)
+            if self.clip_depth:  # if True, clip the depth image
+                depth_obs = depth_obs.clip(min=depth_obs.min(), max=self.clip_max_val)
+            return depth_obs
+
 
     def plot_goal_obs(self):
         obs = self.goal_info['goal_obs']
