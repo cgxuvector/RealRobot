@@ -74,7 +74,7 @@ class GoalDQNExperiment(object):
         # number of the evaluation
         eval_total_num = 100
         success_num = 0.0
-        optimal_steps = 10
+        optimal_steps = int(round(self.env.room_size / self.env.forward_step_size) + 1)
         # start evaluation
         for i in range(eval_total_num):
             # reset the environment
