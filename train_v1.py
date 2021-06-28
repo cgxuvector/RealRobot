@@ -1,5 +1,5 @@
 from experiment.GoalDQNExperiment import GoalDQNExperiment
-from experiment.HERExperiment import HERDQNExperiment
+#from experiment.HERExperiment import HERDQNExperiment
 from agent.GoalDQNAgent import GoalDQNAgent
 
 from env.Maze_v1 import GoalTextMaze
@@ -166,9 +166,9 @@ if __name__ == "__main__":
     envs = make_envs()
 
     # make the experiment runner
-    if args.use_her:
-        myExperiment = HERDQNExperiment(myAgent, envs[0], envs[1], training_params)
-    else:
-        myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
+ #   if args.use_her:
+ #       myExperiment = HERDQNExperiment(myAgent, envs[0], envs[1], training_params)
+ #   else:
+    myExperiment = GoalDQNExperiment(myAgent, envs[0], envs[1], training_params)
 
     myExperiment.run()
