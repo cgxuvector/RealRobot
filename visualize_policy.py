@@ -14,7 +14,7 @@ def parse_input_arguments():
     parser = argparse.ArgumentParser()
 
     # arguments for environment
-    parser.add_argument("--observation", type=str, default="panorama-depth")
+    parser.add_argument("--observation", type=str, default="panorama-rgb")
     parser.add_argument("--panorama_mode", type=str, default='concat')
     parser.add_argument("--action_space", type=str, default='3-actions')
     parser.add_argument("--random_init", action="store_true", default=True)
@@ -23,7 +23,7 @@ def parse_input_arguments():
     parser.add_argument("--goal_rnd_spawn", action="store_true", default=True)
     parser.add_argument("--obs_width", type=int, default=320)  # too big window will cause the shutdown freeze
     parser.add_argument("--obs_height", type=int, default=240)
-    parser.add_argument("--reach_goal_eps", type=float, default=0.5)
+    parser.add_argument("--reach_goal_eps", type=float, default=0.15)
     parser.add_argument("--max_episode_steps", type=int, default=10)
     parser.add_argument("--room_size", type=int, default=0.78)
     parser.add_argument("--wall_size", type=float, default=0.01)
@@ -35,38 +35,27 @@ def parse_input_arguments():
     parser.add_argument("--dqn_mode", type=str, default="double")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--sparse_reward", type=float, default=0)
-    # # model for state
-    # parser.add_argument("--model_path", type=str, default="./results/goal_dqn_double_state_rs_3_dist_1_her_vanilla/"
-    #                                                       "05-27/"
-    #                                                       "21-14-20_goal_dqn_double_state_rs_3_dist_1_her_vanilla_test_env/"
+
+    # # model for observations 3 actions rnd start position and orientation and rnd goal position
+    parser.add_argument("--model_path", type=str, default="./results/from_panzer/real_robot_models/"
+                                                          "6_25_local_goal_rgb_larger_rooms/06-25/"
+                                                          "14-08-45_6_25_local_goal_rgb_larger_rooms_test_env/model/")
+
+    # model for state 3 actions rnd start position and orientation and rnd goal position
+    # parser.add_argument("--model_path", type=str, default="./results/from_panzer/real_robot_models/"
+    #                                                       "6_25_local_goal_state_larger_rooms/06-25/"
+    #                                                       "14-07-31_6_25_local_goal_state_larger_rooms_test_env/"
     #                                                       "model/")
-
-    # # model for state
-    # parser.add_argument("--model_path", type=str, default="./results/from_panzer/goal_dqn/results/"
-    #                                                       "goal_dqn_double_obs_rs_3_dist_1_no_her/"
-    #                                                       "05-26/"
-    #                                                       "17-26-28_goal_dqn_double_obs_rs_3_dist_1_no_her_test_env/"
-    #                                                       "model/")
-
-    # model for observations 3 actions rnd start position and orientation and rnd goal position
-    parser.add_argument("--model_path", type=str, default="./results/local_goal_policy_dist_1_obs/06-24/"
-                                                          "15-08-36_local_goal_policy_dist_1_obs_test_env/model/")
-
-    # # model for state 3 actions rnd start position and orientation and rnd goal position
-    # parser.add_argument("--model_path", type=str, default="./results/6_24_local_dqn_policy_no_her_dist_1_rnd_goal/"
-    #                                                       "06-24/"
-    #                                                       "18-01-07_6_24_local_dqn_policy_"
-    #                                                       "no_her_dist_1_rnd_goal_test_env/model/")
 
     parser.add_argument("--view", type=str, default="top_down")
-    parser.add_argument("--eval_mode", action="store_true", default=False)
+    parser.add_argument("--eval_mode", action="store_true", default=True)
 
     return parser.parse_args()
 
 
 def make_env(env_params):
     # create the maze from text
-    maze = GoalTextMaze(text_file='env/mazes/maze_7_2.txt',
+    maze = GoalTextMaze(text_file='env/mazes/maze_11_0.txt',
                         room_size=env_params['room_size'],
                         wall_size=env_params['wall_size'],
                         obs_name=env_params['obs_name'],
@@ -102,7 +91,7 @@ def make_agent(agent_params, env_params):
     # action = agent.behavior_policy_net(test_state, goal_state).max(dim=1)[1].item()
     # print(action_names[action])
     # Debug.set_trace()
-    # torch.save(agent.behavior_policy_net.state_dict(), './norm_sim2real_state_model_binary.pt', _use_new_zipfile_serialization=False)
+    torch.save(agent.behavior_policy_net.state_dict(), './norm_sim2real_state_model_binary.pt', _use_new_zipfile_serialization=False)
     agent.eps = 0
 
     return agent
