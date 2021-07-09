@@ -27,6 +27,8 @@ def parse_input_arguments():
     parser.add_argument("--room_size", type=int, default=0.78)  # change the size of the room
     parser.add_argument("--agent_radius", type=float, default=0.175)  # change the agent radius
     parser.add_argument("--forward_step_size", type=float, default=0.2)  # step size of the agent
+    parser.add_argument("--clip_depth_obs", action='store_true', default=False)  # whether clip the depth image
+    parser.add_argument("--clip_depth_max_val", type=float, default=0.78 * 3 / 2)  # maximum distance to observe
 
     # arguments for agent
     parser.add_argument("--dqn_mode", type=str, default="double")
@@ -77,7 +79,10 @@ env_params = {
     'sample_dist': args.sample_dist,
 
     'agent_radius': 0.175,
-    'forward_step_size': 0.2
+    'forward_step_size': 0.2,
+
+    'clip_depth_obs': args.clip_depth_obs,
+    'clip_depth_max': args.clip_depth_max_val
 }
 
 agent_params = {
@@ -135,7 +140,9 @@ def make_envs():
                            agent_radius=env_params['agent_radius'],
                            forward_step_size=env_params['forward_step_size'],
                            obs_width=160,
-                           obs_height=120)  # stop epsilon
+                           obs_height=120,
+                           clip_depth_obs=env_params['clip_depth_obs'],
+                           clip_depth_max=env_params['clip_depth_max'])  # stop epsilon
 
     # creat the testing environment
     tst_env = GoalTextMaze(text_file='env/mazes/maze_7_0.txt',
@@ -153,7 +160,9 @@ def make_envs():
                            agent_radius=env_params['agent_radius'],
                            forward_step_size=env_params['forward_step_size'],
                            obs_width=160,
-                           obs_height=120)  # stop epsilon
+                           obs_height=120,
+                           clip_depth_obs=env_params['clip_depth_obs'],
+                           clip_depth_max=env_params['clip_depth_max'])  # stop epsilon
 
     return [trn_env, tst_env]
 
